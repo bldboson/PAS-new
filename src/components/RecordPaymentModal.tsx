@@ -1,7 +1,46 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { ShareRecord, MonthKey, ALL_MONTHS } from '../types';
-import { formatTaka } from '../utils/calculations';
-import { X, CreditCard, RotateCcw, AlertCircle, CheckCircle2, Trash2 } from 'lucide-react';
+import {
+  formatTaka,
+  calculateCompoundDue,
+  MONTHLY_INSTALLMENT_AMOUNT,
+} from '../utils/calculations';
+import { useLanguage } from '../context/LanguageContext';
+import {
+  X,
+  CreditCard,
+  Check,
+  Calendar,
+} from 'lucide-react';
+
+const getTodayIsoDate = (): string => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const formatIsoToLedgerDate = (val: string): string => {
+  if (!val) return '';
+  if (val.includes('.')) return val;
+  const parts = val.split('-');
+  if (parts.length === 3) {
+    const [yyyy, mm, dd] = parts;
+    return `${dd}.${mm}.${yyyy.slice(-2)}`;
+  }
+  return val;
+};
+
+const formatIsoToDisplay = (val: string): string => {
+  if (!val) return '';
+  const parts = val.split('-');
+  if (parts.length === 3) {
+    const [yyyy, mm, dd] = parts;
+    return `${dd}.${mm}.${yyyy}`;
+  }
+  return val;
+};
 
 interface RecordPaymentModalProps {
   isOpen: boolean;
@@ -11,8 +50,10 @@ interface RecordPaymentModalProps {
   initialMonth?: MonthKey;
   onSavePayment: (payload: {
     shareId: string;
-    month: MonthKey;
+    month?: MonthKey;
+    months?: MonthKey[];
     amount: number;
+    lateFeeAmount?: number;
     date: string;
     paymentMethod: string;
     includeLateFee: boolean;
@@ -28,383 +69,574 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
   initialShare,
   initialMonth,
   onSavePayment,
-  onRevertPayment,
 }) => {
+  const { t, language } = useLanguage();
   const activeShares = shares.filter((s) => !s.isClosed);
 
   const [selectedShareId, setSelectedShareId] = useState<string>(activeShares[0]?.id || 'PAS-01');
-  const [selectedMonth, setSelectedMonth] = useState<MonthKey>(initialMonth || 'Oct-26');
-  const [amount, setAmount] = useState<number>(2800);
-  const [date, setDate] = useState<string>('15.10.26');
+  const [selectedMonths, setSelectedMonths] = useState<MonthKey[]>([]);
+  const [date, setDate] = useState<string>(getTodayIsoDate);
   const [paymentMethod, setPaymentMethod] = useState<string>('Bank Deposit');
-  const [includeLateFee, setIncludeLateFee] = useState<boolean>(false);
+  const [includeLateFee, setIncludeLateFee] = useState<boolean>(true);
+  const [customAmount, setCustomAmount] = useState<number | null>(null);
   const [notes, setNotes] = useState<string>('');
-  const [showConfirmRevert, setShowConfirmRevert] = useState<boolean>(false);
 
   const currentShare = activeShares.find((s) => s.id === selectedShareId) || activeShares[0];
-  const currentMonthData = currentShare?.months[selectedMonth];
-  const isCurrentlyPaid = currentMonthData?.status === 'paid';
-  const isCurrentlyDue = currentMonthData?.status === 'due';
 
-  useEffect(() => {
-    if (initialShare) {
-      setSelectedShareId(initialShare.id);
-      if (initialMonth) {
-        setSelectedMonth(initialMonth);
-      } else if (initialShare.dueMonths > 0) {
-        const firstDue = ALL_MONTHS.find((m) => initialShare.months[m]?.status === 'due');
-        if (firstDue) setSelectedMonth(firstDue);
-      } else {
-        const firstUpcoming = ALL_MONTHS.find((m) => initialShare.months[m]?.status === 'upcoming');
-        if (firstUpcoming) setSelectedMonth(firstUpcoming);
+  // List of all base months available for this share
+  const baseMonths: MonthKey[] = useMemo(() => {
+    if (!currentShare?.months) return ALL_MONTHS;
+    const shareMonthKeys = Object.keys(currentShare.months);
+    const combined = [...ALL_MONTHS];
+    for (const k of shareMonthKeys) {
+      if (!combined.includes(k)) combined.push(k);
+    }
+    return combined;
+  }, [currentShare]);
+
+  // HIDE PAID MONTHS: Only show Due, Current, and Advance (Upcoming) months!
+  const payableMonthsList: MonthKey[] = useMemo(() => {
+    if (!currentShare?.months) return baseMonths;
+    const filtered = baseMonths.filter((m) => {
+      const status = currentShare.months[m]?.status;
+      return status !== 'paid'; // Automatically hide any month that is paid!
+    });
+    // If all configured months are paid, supply upcoming advance months
+    if (filtered.length === 0) {
+      return ['Jan-27', 'Feb-27'];
+    }
+    return filtered;
+  }, [baseMonths, currentShare]);
+
+  // Strictly ensure no paid month is ever in the cards grid
+  const displayMonthsList: MonthKey[] = useMemo(() => {
+    const list = [...payableMonthsList];
+    for (const sm of selectedMonths) {
+      if (!list.includes(sm) && currentShare?.months[sm]?.status !== 'paid') {
+        list.push(sm);
       }
-      setIncludeLateFee(initialShare.dueMonths > 0);
-    } else if (initialMonth) {
-      setSelectedMonth(initialMonth);
     }
-  }, [initialShare, initialMonth, isOpen]);
+    return list.filter((m) => currentShare?.months[m]?.status !== 'paid');
+  }, [payableMonthsList, selectedMonths, currentShare]);
 
-  // Pre-fill fields whenever selectedShare or selectedMonth changes
+  // Find due months and upcoming months
+  const dueMonths = useMemo(() => {
+    if (!currentShare?.months) return [];
+    return baseMonths.filter((m) => currentShare.months[m]?.status === 'due');
+  }, [currentShare, baseMonths]);
+
+  // Check if current month (Oct-26) is unpaid
+  const isCurrentUnpaid = useMemo(() => {
+    const currentStatus = currentShare?.months['Oct-26']?.status;
+    return currentStatus !== 'paid';
+  }, [currentShare]);
+
+  // Initialize selection when modal opens or share changes
   useEffect(() => {
-    if (currentMonthData && currentMonthData.status === 'paid') {
-      setAmount(currentMonthData.amount || 2800);
-      setDate(currentMonthData.date || '15.10.26');
-      setPaymentMethod(currentMonthData.paymentMethod || 'Bank Deposit');
-      setNotes(currentMonthData.notes || '');
-    } else {
-      setAmount(2800);
-      setDate('15.10.26');
-      setPaymentMethod('Bank Deposit');
-      setNotes('');
+    if (!isOpen) return;
+
+    setDate(getTodayIsoDate());
+
+    const targetShare = initialShare || activeShares.find((s) => s.id === selectedShareId) || activeShares[0];
+    if (targetShare) {
+      setSelectedShareId(targetShare.id);
+
+      const targetBaseMonths = targetShare?.months
+        ? Array.from(new Set([...ALL_MONTHS, ...Object.keys(targetShare.months)]))
+        : ALL_MONTHS;
+
+      const shareDue = targetBaseMonths.filter((m) => targetShare.months[m]?.status === 'due');
+
+      if (initialMonth && targetShare.months[initialMonth]?.status !== 'paid') {
+        setSelectedMonths([initialMonth]);
+        setIncludeLateFee(targetShare.months[initialMonth]?.status === 'due' && targetShare.lateFee > 0);
+      } else if (shareDue.length > 0) {
+        setSelectedMonths(shareDue);
+        setIncludeLateFee(targetShare.lateFee > 0);
+      } else {
+        const shareUnpaids = targetBaseMonths.filter((m) => targetShare.months[m]?.status !== 'paid');
+        const firstUnpaid = shareUnpaids[0] || 'Jan-27';
+        setSelectedMonths([firstUnpaid]);
+        setIncludeLateFee(false);
+      }
+
+      setCustomAmount(null);
     }
-  }, [selectedShareId, selectedMonth]);
+  }, [isOpen, initialShare, initialMonth]);
 
-  if (!isOpen) return null;
-
+  // When selectedShareId changes from dropdown
   const handleShareChange = (newId: string) => {
     setSelectedShareId(newId);
+    setCustomAmount(null);
     const s = activeShares.find((x) => x.id === newId);
     if (s) {
-      if (s.dueMonths > 0) {
-        const firstDue = ALL_MONTHS.find((m) => s.months[m]?.status === 'due');
-        if (firstDue) setSelectedMonth(firstDue);
-        setIncludeLateFee(true);
+      const sBaseMonths = s?.months
+        ? Array.from(new Set([...ALL_MONTHS, ...Object.keys(s.months)]))
+        : ALL_MONTHS;
+      const sDues = sBaseMonths.filter((m) => s.months[m]?.status === 'due');
+      if (sDues.length > 0) {
+        setSelectedMonths(sDues);
+        setIncludeLateFee(s.lateFee > 0);
       } else {
-        const firstUpcoming = ALL_MONTHS.find((m) => s.months[m]?.status === 'upcoming');
-        if (firstUpcoming) setSelectedMonth(firstUpcoming);
+        const unpaids = sBaseMonths.filter((m) => s.months[m]?.status !== 'paid');
+        const firstUnpaid = unpaids[0] || 'Jan-27';
+        setSelectedMonths([firstUnpaid]);
         setIncludeLateFee(false);
       }
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSavePayment({
-      shareId: selectedShareId,
-      month: selectedMonth,
-      amount: Number(amount) || 2800,
-      date,
-      paymentMethod,
-      includeLateFee,
-      notes,
+  // Toggle single month in the tick system (cannot toggle paid months)
+  const handleToggleMonth = (monthKey: MonthKey) => {
+    if (currentShare?.months[monthKey]?.status === 'paid') return;
+    setCustomAmount(null);
+    setSelectedMonths((prev) => {
+      if (prev.includes(monthKey)) {
+        return prev.filter((m) => m !== monthKey);
+      } else {
+        return [...prev, monthKey];
+      }
     });
-    onClose();
   };
 
-  const handleExecuteRevert = (targetStatus: 'due' | 'upcoming') => {
-    if (onRevertPayment) {
-      onRevertPayment(selectedShareId, selectedMonth, targetStatus);
+  // Quick Select Helpers
+  const handleSelectAllDues = () => {
+    setCustomAmount(null);
+    if (dueMonths.length > 0) {
+      setSelectedMonths(dueMonths);
+      setIncludeLateFee(currentShare.lateFee > 0);
     }
-    setShowConfirmRevert(false);
+  };
+
+  const handleSelectCurrentMonth = () => {
+    setCustomAmount(null);
+    const current = 'Oct-26';
+    if (isCurrentUnpaid) {
+      setSelectedMonths([current]);
+      setIncludeLateFee(currentShare.months[current]?.status === 'due');
+    }
+  };
+
+  const handleAddAdvanceMonth = () => {
+    setCustomAmount(null);
+    const nextPayable = payableMonthsList.find((m) => !selectedMonths.includes(m));
+    if (nextPayable) {
+      setSelectedMonths((prev) => [...prev, nextPayable]);
+    } else {
+      const futurePool: MonthKey[] = ['Jan-27', 'Feb-27', 'Mar-27', 'Apr-27', 'May-27'];
+      const nextFuture = futurePool.find((m) => !selectedMonths.includes(m));
+      if (nextFuture) {
+        setSelectedMonths((prev) => [...prev, nextFuture]);
+      }
+    }
+  };
+
+  const handleClearSelection = () => {
+    setCustomAmount(null);
+    setSelectedMonths([]);
+  };
+
+  // Calculation helpers
+  const selectedCount = selectedMonths.length;
+  const baseInstallmentAmount = selectedCount * MONTHLY_INSTALLMENT_AMOUNT;
+
+  // Determine if any selected month is overdue
+  const hasSelectedDueMonths = useMemo(() => {
+    return selectedMonths.some((m) => currentShare?.months[m]?.status === 'due');
+  }, [selectedMonths, currentShare]);
+
+  const currentDayOfMonth = new Date().getDate();
+
+  // Dynamically calculate compound due for the exact selected months count
+  const dynamicCompound = useMemo(() => {
+    if (!hasSelectedDueMonths || selectedCount === 0) {
+      return {
+        totalDue: baseInstallmentAmount,
+        penaltyDue: 0,
+        principalDue: baseInstallmentAmount,
+      };
+    }
+    return calculateCompoundDue(selectedCount, currentDayOfMonth, selectedMonths);
+  }, [hasSelectedDueMonths, selectedCount, currentDayOfMonth, selectedMonths, baseInstallmentAmount]);
+
+  const activeLateFee = (hasSelectedDueMonths && includeLateFee) ? dynamicCompound.penaltyDue : 0;
+  const autoCalculatedTotal = hasSelectedDueMonths
+    ? (includeLateFee ? dynamicCompound.totalDue : baseInstallmentAmount)
+    : baseInstallmentAmount;
+  const displayAmount = customAmount !== null ? customAmount : autoCalculatedTotal;
+
+  if (!isOpen) return null;
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (selectedMonths.length === 0) return;
+
+    const formattedDate = formatIsoToLedgerDate(date);
+
+    onSavePayment({
+      shareId: selectedShareId,
+      month: selectedMonths[0],
+      months: selectedMonths,
+      amount: Number(displayAmount) || 0,
+      lateFeeAmount: activeLateFee,
+      date: formattedDate,
+      paymentMethod,
+      includeLateFee: hasSelectedDueMonths && includeLateFee,
+      notes,
+    });
     onClose();
   };
 
   return (
     <div
       onClick={(e) => {
-        if (e.target === e.currentTarget && !showConfirmRevert) onClose();
+        if (e.target === e.currentTarget) onClose();
       }}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/75 animate-in fade-in duration-150 motion-reduce:animate-none"
     >
-      <div className="relative w-full max-w-lg bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center">
+      <div className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-slate-200/90 overflow-hidden flex flex-col max-h-[92vh]">
+        {/* Ultra Premium Header */}
+        <div className="px-5 py-4 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center">
               <CreditCard className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="font-bold text-slate-900 text-sm sm:text-base">
-                {isCurrentlyPaid ? 'Edit or Manage Payment Entry' : 'Record Fund Collection'}
+              <h3 className="font-bold text-sm sm:text-base text-white tracking-tight">
+                {t('recordPaymentTitle')}
               </h3>
-              <p className="text-[11px] text-slate-500">
-                {isCurrentlyPaid
-                  ? 'Update payment details or revert accidental entry'
-                  : 'Post installment payment to society ledger'}
+              <p className="text-[11px] text-slate-400">
+                {t('recordPaymentSubtitle')}
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
             aria-label="Close dialog"
-            className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
+            className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4 text-xs sm:text-sm">
-          {/* Share ID Selection */}
-          <div>
-            <label className="block font-semibold text-slate-700 mb-1">
-              Select Share ID &amp; Member
-            </label>
+        <form onSubmit={handleSubmit} className="p-5 space-y-4 text-xs sm:text-sm overflow-y-auto">
+          {/* Member & Share Selection */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label className="font-semibold text-slate-700 text-xs">
+                {t('memberAndShare')}
+              </label>
+              {currentShare && (
+                <span className={`px-2 py-0.2 rounded-full font-bold text-[10px] ${
+                  currentShare.dueMonths > 0
+                    ? 'bg-rose-100 text-rose-800'
+                    : 'bg-emerald-100 text-emerald-800'
+                }`}>
+                  {currentShare.dueMonths > 0 ? `${currentShare.dueMonths}M Overdue` : 'Clean'}
+                </span>
+              )}
+            </div>
+
             <select
               value={selectedShareId}
               onChange={(e) => handleShareChange(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-900 bg-white font-medium focus:outline-emerald-500 focus:ring-1 focus:ring-emerald-500"
+              className="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-slate-900 bg-white font-semibold text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 shadow-2xs"
             >
               {activeShares.map((s) => (
                 <option key={s.id} value={s.id}>
-                  {s.id} - {s.memberName} {s.dueMonths > 0 ? `(DUE: ${formatTaka(s.totalDue)})` : ''}
+                  {s.id} &bull; {s.memberName} {s.dueMonths > 0 ? `(DUE: ${formatTaka(s.totalDue)})` : ''}
                 </option>
               ))}
             </select>
-          </div>
 
-          {/* Current Share Status Banner */}
-          {currentShare && (
-            <div
-              className={`p-3 rounded-lg border text-xs flex items-center justify-between ${
-                currentShare.dueMonths > 0
-                  ? 'bg-rose-50 border-rose-200 text-rose-800'
-                  : 'bg-emerald-50 border-emerald-200 text-emerald-800'
-              }`}
-            >
-              <div>
-                <span className="font-bold">{currentShare.memberName}</span>
-                <span className="block text-[11px] text-slate-600 mt-0.5">
-                  Deposited: {formatTaka(currentShare.totalDeposit)} | Dues: {formatTaka(currentShare.totalDue)}
+            {/* Quick Stats Pill */}
+            {currentShare && (
+              <div className="flex items-center justify-between px-3 py-1.5 bg-slate-50 border border-slate-200/80 rounded-lg text-xs">
+                <span className="text-slate-500 text-[11px]">
+                  {t('deposited')}: <strong className="text-emerald-700 font-mono">{formatTaka(currentShare.totalDeposit)}</strong>
+                </span>
+                <span className="text-slate-500 text-[11px]">
+                  {t('outstandingDue')}:{' '}
+                  <strong className={`font-mono ${currentShare.dueMonths > 0 ? 'text-rose-700 font-bold' : 'text-slate-700'}`}>
+                    {formatTaka(currentShare.totalDue)}
+                  </strong>
                 </span>
               </div>
-              <span className="px-2 py-0.5 rounded font-bold uppercase text-[10px] bg-white border">
-                {currentShare.dueMonths > 0 ? `${currentShare.dueMonths}m Overdue` : 'Clean'}
-              </span>
-            </div>
-          )}
-
-          {/* Installment Month Selection */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Installment Month</label>
-              <select
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(e.target.value as MonthKey)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-900 bg-white font-medium focus:outline-emerald-500"
-              >
-                {ALL_MONTHS.map((m) => (
-                  <option key={m} value={m}>
-                    Month of {m} {currentShare?.months[m]?.status === 'paid' ? '✓ (Paid)' : currentShare?.months[m]?.status === 'due' ? '⚠ (Due)' : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Payment Date (DD.MM.YY)</label>
-              <input
-                type="text"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                placeholder="15.10.26"
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-900 font-mono focus:outline-emerald-500"
-                required
-              />
-            </div>
+            )}
           </div>
 
-          {/* Already Paid Notice & Quick Revert Button */}
-          {isCurrentlyPaid && (
-            <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-lg flex items-center justify-between gap-2">
-              <div className="text-xs text-blue-900">
-                <span className="font-bold block">Entry Already Recorded</span>
-                <span className="text-[11px] text-blue-800">
-                  Paid: {formatTaka(currentMonthData?.amount || 2800)} on {currentMonthData?.date}
+          {/* Installment Months Tick System */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <span className="font-semibold text-slate-800 text-xs">
+                  {t('selectMonths')}
+                </span>
+                <span className="px-2 py-0.2 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-mono font-bold">
+                  {selectedCount}
                 </span>
               </div>
-              <button
-                type="button"
-                onClick={() => setShowConfirmRevert(true)}
-                className="px-2.5 py-1.5 rounded-lg border border-rose-300 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs transition-colors inline-flex items-center gap-1 cursor-pointer shrink-0"
-              >
-                <Trash2 className="w-3.5 h-3.5 text-rose-600" />
-                <span>Revert / Delete</span>
-              </button>
-            </div>
-          )}
 
-          {/* Payment Amount & Method */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Installment Amount (Tk.)</label>
-              <input
-                type="number"
-                value={amount}
-                onChange={(e) => setAmount(Number(e.target.value))}
-                min="0"
-                step="100"
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-900 font-mono font-bold focus:outline-emerald-500"
-                required
-              />
+              {/* Clean Presets - Only Due, Current (unpaid), and Advance */}
+              <div className="flex items-center gap-1 text-[11px]">
+                {dueMonths.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleSelectAllDues}
+                    className="px-2 py-0.5 rounded-md font-bold bg-amber-100 hover:bg-amber-200 text-amber-900 transition-colors cursor-pointer"
+                  >
+                    {t('allDues')} ({dueMonths.length})
+                  </button>
+                )}
+                {isCurrentUnpaid && (
+                  <button
+                    type="button"
+                    onClick={handleSelectCurrentMonth}
+                    className="px-2 py-0.5 rounded-md font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
+                  >
+                    {t('current')}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleAddAdvanceMonth}
+                  className="px-2 py-0.5 rounded-md font-medium bg-emerald-50 hover:bg-emerald-100 text-emerald-800 transition-colors cursor-pointer"
+                >
+                  {t('advance')}
+                </button>
+                {selectedMonths.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleClearSelection}
+                    className="px-1.5 py-0.5 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
+                  >
+                    {t('clear')}
+                  </button>
+                )}
+              </div>
             </div>
 
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Payment Method</label>
-              <select
-                value={paymentMethod}
-                onChange={(e) => setPaymentMethod(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-900 bg-white font-medium focus:outline-emerald-500"
-              >
-                <option value="Bank Deposit">Bank Deposit (Islami Bank)</option>
-                <option value="bKash">bKash Merchant</option>
-                <option value="Nagad">Nagad Online</option>
-                <option value="Cash">Cash to Treasurer</option>
-                <option value="BEFTN / NPSB">BEFTN / NPSB Transfer</option>
-              </select>
+            {/* Clean Month Cards - Hiding Paid Months, showing only Due, Current, Advance */}
+            <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto p-1 border border-slate-200 rounded-xl bg-slate-50/40">
+              {displayMonthsList.map((m) => {
+                const monthData = currentShare?.months[m];
+                const isDue = monthData?.status === 'due';
+                const isCurrent = m === 'Oct-26';
+                const isChecked = selectedMonths.includes(m);
+
+                return (
+                  <div
+                    key={m}
+                    onClick={() => handleToggleMonth(m)}
+                    className={`p-2.5 rounded-xl border text-xs flex items-center justify-between cursor-pointer transition-colors duration-150 select-none ${
+                      isChecked
+                        ? 'bg-emerald-50/90 border-emerald-500 ring-2 ring-emerald-300/60 shadow-2xs'
+                        : isDue
+                        ? 'bg-white border-amber-300 hover:border-amber-400'
+                        : 'bg-white border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div
+                        className={`w-4 h-4 rounded-md flex items-center justify-center border transition-colors duration-150 shrink-0 ${
+                          isChecked
+                            ? 'bg-emerald-600 border-emerald-600 text-white'
+                            : 'border-slate-300 bg-white'
+                        }`}
+                      >
+                        {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
+                      </div>
+                      <div className="min-w-0">
+                        <span className="font-bold text-slate-900 block truncate text-xs">
+                          {m}
+                        </span>
+                        <span className="text-[10px] text-slate-500 font-mono block">
+                          Tk. 2,800
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="shrink-0">
+                      {isDue ? (
+                        <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-rose-100 text-rose-800 animate-pulse">
+                          {t('statusDue')}
+                        </span>
+                      ) : isCurrent ? (
+                        <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-100 text-amber-900">
+                          {t('current')}
+                        </span>
+                      ) : (
+                        <span className="px-1.5 py-0.2 rounded text-[10px] font-medium bg-emerald-50 text-emerald-800 border border-emerald-200/60">
+                          {t('advance')}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
-          {/* Late fee option if applicable */}
-          {isCurrentlyDue && (
-            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-              <label className="flex items-start gap-2.5 cursor-pointer">
+          {/* Ultra-Clean Late Fee Toggle */}
+          {hasSelectedDueMonths && dynamicCompound.penaltyDue > 0 && (
+            <div className="p-3 bg-amber-50/60 border border-amber-200/90 rounded-xl flex items-center justify-between">
+              <label className="flex items-center gap-2.5 cursor-pointer select-none">
                 <input
                   type="checkbox"
                   checked={includeLateFee}
-                  onChange={(e) => setIncludeLateFee(e.target.checked)}
-                  className="mt-0.5 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                  onChange={(e) => {
+                    setIncludeLateFee(e.target.checked);
+                    setCustomAmount(null);
+                  }}
+                  className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer"
                 />
-                <div className="text-xs">
-                  <span className="font-bold text-amber-900">
-                    Include 10% Late Fee Fine (Tk. 280)
-                  </span>
-                  <p className="text-slate-600 text-[11px] mt-0.5">
-                    Check this if member is paying the overdue penalty fee alongside installment.
-                  </p>
-                </div>
+                <span className="text-xs font-bold text-slate-800">
+                  {t('includeLateFee')}
+                </span>
               </label>
+              <div className="text-right">
+                <span className="font-mono font-bold text-rose-700 text-sm block">
+                  +{formatTaka(dynamicCompound.penaltyDue)}
+                </span>
+                <span className="text-[10px] text-slate-400 block font-normal">
+                  {t('uncheckToWaive')}
+                </span>
+              </div>
             </div>
           )}
 
-          {/* Notes */}
-          <div>
-            <label className="block font-semibold text-slate-700 mb-1">
-              Deposit Slip / Bank Reference (Optional)
-            </label>
-            <input
-              type="text"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="e.g. IBBL Slip #98234 or bKash TrxID #8X76"
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-900 focus:outline-emerald-500"
-            />
+          {/* Payment Details 2x2 Clean Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="font-semibold text-slate-700 text-xs">
+                  {t('amountToPay')}
+                </label>
+                {customAmount !== null && (
+                  <button
+                    type="button"
+                    onClick={() => setCustomAmount(null)}
+                    className="text-[10px] text-emerald-700 font-bold hover:underline cursor-pointer"
+                  >
+                    {t('resetCalculated')} (Tk. {autoCalculatedTotal})
+                  </button>
+                )}
+              </div>
+              <input
+                type="number"
+                value={displayAmount}
+                onChange={(e) => setCustomAmount(Number(e.target.value))}
+                min="0"
+                step="any"
+                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-slate-900 font-mono font-bold text-base focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 shadow-2xs"
+                required
+              />
+              <span className="text-[10px] text-slate-400 mt-1 block">
+                {selectedCount} month(s) &bull; Tk. 2,800
+                {hasSelectedDueMonths && includeLateFee && dynamicCompound.penaltyDue > 0
+                  ? ` + ${formatTaka(dynamicCompound.penaltyDue)} fine`
+                  : ''}
+              </span>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="flex items-center gap-1.5 font-semibold text-slate-700 text-xs">
+                  <Calendar className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>{t('paymentDate')}</span>
+                </label>
+                {date !== getTodayIsoDate() ? (
+                  <button
+                    type="button"
+                    onClick={() => setDate(getTodayIsoDate())}
+                    className="text-[10px] text-emerald-700 font-semibold hover:underline cursor-pointer"
+                  >
+                    {language === 'bn' ? 'আজকের তারিখ' : 'Today'}
+                  </button>
+                ) : (
+                  <span className="text-[10px] text-slate-400 font-mono">
+                    {language === 'bn' ? 'আজ' : 'Today'} ({formatIsoToDisplay(date)})
+                  </span>
+                )}
+              </div>
+              <input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                onClick={(e) => {
+                  try {
+                    e.currentTarget.showPicker?.();
+                  } catch {
+                    // Browser fallback
+                  }
+                }}
+                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-slate-900 font-mono text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 shadow-2xs bg-white cursor-pointer"
+                required
+              />
+              <span className="text-[10px] text-slate-400 mt-1 block font-mono">
+                {language === 'bn' ? 'রেকর্ড হবে' : 'Saved as'}: {formatIsoToLedgerDate(date)}
+              </span>
+            </div>
+
+            <div>
+              <label className="block font-semibold text-slate-700 text-xs mb-1">
+                {t('paymentMethod')}
+              </label>
+              <select
+                value={paymentMethod}
+                onChange={(e) => setPaymentMethod(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-slate-900 bg-white font-medium text-xs focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 shadow-2xs"
+              >
+                <option value="Bank Deposit">Bank Deposit</option>
+                <option value="bKash">bKash</option>
+                <option value="Nagad">Nagad</option>
+                <option value="Cash">Cash</option>
+                <option value="BEFTN / NPSB">BEFTN / NPSB</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block font-semibold text-slate-700 text-xs mb-1">
+                {t('depositSlipRef')}
+              </label>
+              <input
+                type="text"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="e.g. TrxID #8X76 (Optional)"
+                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-slate-900 text-xs focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 shadow-2xs"
+              />
+            </div>
           </div>
 
-          {/* Submit Buttons */}
-          <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
-            {isCurrentlyPaid ? (
-              <button
-                type="button"
-                onClick={() => setShowConfirmRevert(true)}
-                className="text-xs text-rose-600 hover:text-rose-800 hover:underline font-semibold inline-flex items-center gap-1 cursor-pointer"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>Delete this payment entry</span>
-              </button>
-            ) : (
-              <div />
-            )}
+          {/* Ultra-Premium Action Footer */}
+          <div className="pt-3 border-t border-slate-200/80 flex items-center justify-between">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 rounded-xl border border-slate-300 hover:bg-slate-100 text-slate-700 text-xs font-semibold transition-colors duration-150 cursor-pointer"
+            >
+              {t('cancel')}
+            </button>
 
-            <div className="flex items-center gap-2.5">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2 rounded-lg border border-slate-300 hover:bg-slate-100 text-slate-700 font-medium transition-colors cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="px-5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold shadow-sm transition-colors cursor-pointer"
-              >
-                {isCurrentlyPaid ? 'Save Changes' : 'Confirm & Record Payment'}
-              </button>
-            </div>
+            <button
+              type="submit"
+              disabled={selectedMonths.length === 0}
+              className={`px-5 py-2.5 rounded-xl text-white text-xs sm:text-sm font-bold shadow-md transition-colors duration-150 inline-flex items-center gap-2 cursor-pointer disabled:bg-slate-300 disabled:cursor-not-allowed disabled:text-slate-500 disabled:shadow-none ${
+                selectedMonths.length === 0
+                  ? 'bg-slate-300 cursor-not-allowed text-slate-500 shadow-none'
+                  : 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-600/20 active:scale-98'
+              }`}
+            >
+              <Check className="w-4 h-4 stroke-[2.5]" />
+              <span>
+                {t('confirmPayment')} &bull; {formatTaka(displayAmount)}
+              </span>
+            </button>
           </div>
         </form>
       </div>
-
-      {/* Confirmation to Revert/Delete Payment */}
-      {showConfirmRevert && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs">
-          <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-300 p-6 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-full bg-rose-100 text-rose-700 flex items-center justify-center shrink-0">
-                <Trash2 className="w-5 h-5" />
-              </div>
-              <div>
-                <h4 className="font-bold text-slate-900 text-base">Revert / Delete Payment?</h4>
-                <p className="text-xs text-slate-500">
-                  {selectedShareId} &bull; {selectedMonth} &bull; {formatTaka(currentMonthData?.amount || 2800)}
-                </p>
-              </div>
-            </div>
-
-            <p className="text-xs text-slate-600 leading-relaxed mb-4">
-              How would you like to revert this payment for <strong>{currentShare.memberName}</strong> ({selectedShareId}) for <strong>{selectedMonth}</strong>?
-            </p>
-
-            <div className="space-y-2 mb-6">
-              <button
-                type="button"
-                onClick={() => handleExecuteRevert('due')}
-                className="w-full text-left p-3 rounded-xl border border-amber-300 bg-amber-50/60 hover:bg-amber-100 transition-colors cursor-pointer"
-              >
-                <span className="font-bold text-amber-900 text-xs block">
-                  Mark as Overdue (বকেয়া রাখুন - Due + 10% Late Fee)
-                </span>
-                <span className="text-[11px] text-slate-600 block mt-0.5">
-                  Restores installment as overdue with applicable late fee calculation.
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleExecuteRevert('upcoming')}
-                className="w-full text-left p-3 rounded-xl border border-slate-300 bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer"
-              >
-                <span className="font-bold text-slate-800 text-xs block">
-                  Reset to Unpaid / Upcoming (সম্পূর্ণ মুছে ফেলুন - Unpaid)
-                </span>
-                <span className="text-[11px] text-slate-600 block mt-0.5">
-                  Completely clears payment, marking as pending/upcoming with no fine.
-                </span>
-              </button>
-            </div>
-
-            <div className="flex items-center justify-end">
-              <button
-                type="button"
-                onClick={() => setShowConfirmRevert(false)}
-                className="px-4 py-2 rounded-lg border border-slate-300 hover:bg-slate-100 text-slate-700 font-medium text-xs transition-colors cursor-pointer"
-              >
-                Cancel (বাতিল)
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

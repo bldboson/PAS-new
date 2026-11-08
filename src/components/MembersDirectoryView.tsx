@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { ShareRecord } from '../types';
 import { formatTaka } from '../utils/calculations';
+import { CalculationBreakdownModal } from './CalculationBreakdownModal';
 import {
   Users,
   Search,
@@ -20,7 +21,8 @@ import {
   X,
   Lock,
   ShieldCheck,
-  FileText
+  FileText,
+  Calculator,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -92,6 +94,7 @@ export const MembersDirectoryView: React.FC<MembersDirectoryViewProps> = ({
   const [statusFilter, setStatusFilter] = useState<'all' | 'clean' | 'due' | 'closed'>('all');
   const [sortBy, setSortBy] = useState<'name' | 'funded' | 'due' | 'shares'>('funded');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [breakdownShare, setBreakdownShare] = useState<ShareRecord | null>(null);
 
   // Member editing modal state
   const [editingMember, setEditingMember] = useState<MemberDirectoryInfo | null>(null);
@@ -234,7 +237,7 @@ export const MembersDirectoryView: React.FC<MembersDirectoryViewProps> = ({
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="bg-white p-4 rounded-xl border border-slate-200/90 shadow-xs flex items-center justify-between">
           <div>
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">Registered Members</span>
+            <span className="text-xs font-semibold text-slate-500 block">Registered Members</span>
             <span className="text-2xl font-black text-slate-900 font-mono mt-0.5 block">{memberList.length}</span>
             <span className="text-[11px] text-slate-400">Total society portfolio holders</span>
           </div>
@@ -245,7 +248,7 @@ export const MembersDirectoryView: React.FC<MembersDirectoryViewProps> = ({
 
         <div className="bg-white p-4 rounded-xl border border-slate-200/90 shadow-xs flex items-center justify-between">
           <div>
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">Total Active Shares</span>
+            <span className="text-xs font-semibold text-slate-500 block">Total Active Shares</span>
             <span className="text-2xl font-black text-slate-900 font-mono mt-0.5 block">
               {memberList.reduce((acc, m) => acc + (m.isClosed ? 0 : m.sharesCount), 0)}
             </span>
@@ -258,7 +261,7 @@ export const MembersDirectoryView: React.FC<MembersDirectoryViewProps> = ({
 
         <div className="bg-white p-4 rounded-xl border border-slate-200/90 shadow-xs flex items-center justify-between">
           <div>
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">Total Funded Amount</span>
+            <span className="text-xs font-semibold text-slate-500 block">Total Funded Amount</span>
             <span className="text-2xl font-black text-emerald-700 font-mono mt-0.5 block">
               {formatTaka(totalAllFunded)}
             </span>
@@ -271,7 +274,7 @@ export const MembersDirectoryView: React.FC<MembersDirectoryViewProps> = ({
 
         <div className="bg-white p-4 rounded-xl border border-slate-200/90 shadow-xs flex items-center justify-between">
           <div>
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">Total Outstanding Due</span>
+            <span className="text-xs font-semibold text-slate-500 block">Total Outstanding Due</span>
             <span className={`text-2xl font-black font-mono mt-0.5 block ${totalAllDue > 0 ? 'text-rose-600' : 'text-slate-400'}`}>
               {formatTaka(totalAllDue)}
             </span>
@@ -489,14 +492,26 @@ export const MembersDirectoryView: React.FC<MembersDirectoryViewProps> = ({
                       {/* Due Status */}
                       <td className="px-3 py-3 border-r border-slate-200 text-right font-mono">
                         {hasDue ? (
-                          <div>
-                            <span className="font-bold text-rose-700 text-xs block">
-                              {formatTaka(m.totalDue)}
-                            </span>
-                            <span className="text-[10px] text-rose-600 font-sans font-semibold">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setBreakdownShare(
+                                m.shares.find((s) => s.dueMonths > 0) || m.shares[0]
+                              )
+                            }
+                            className="text-right hover:opacity-80 transition-opacity cursor-pointer group inline-block"
+                            title="Click to view total due & late fee calculation breakdown"
+                          >
+                            <div className="flex items-center justify-end gap-1">
+                              <span className="font-bold text-rose-700 text-xs block group-hover:underline">
+                                {formatTaka(m.totalDue)}
+                              </span>
+                              <Calculator className="w-3 h-3 text-rose-600 opacity-60 group-hover:opacity-100" />
+                            </div>
+                            <span className="text-[10px] text-rose-600 font-sans font-semibold block">
                               {m.dueMonths}m Overdue
                             </span>
-                          </div>
+                          </button>
                         ) : m.isClosed ? (
                           <span className="text-slate-400 text-xs">Closed</span>
                         ) : (
@@ -545,9 +560,9 @@ export const MembersDirectoryView: React.FC<MembersDirectoryViewProps> = ({
             </tbody>
 
             {/* Total Footer - Frozen at Bottom */}
-            <tfoot className="sticky bottom-0 z-20 bg-slate-900 text-white font-mono font-bold border-t-2 border-slate-700 shadow-[0_-3px_8px_rgba(0,0,0,0.25)]">
+            <tfoot className="sticky bottom-0 z-20 bg-slate-900 text-white font-mono font-bold border-t-2 border-slate-700 shadow-md">
               <tr className="bg-slate-900">
-                <td colSpan={2} className="px-3 py-3 border-r border-slate-800 text-left font-sans uppercase tracking-wider text-amber-400 text-xs sticky left-0 z-30 bg-slate-900">
+                <td colSpan={2} className="px-3 py-3 border-r border-slate-800 text-left font-sans font-bold text-amber-400 text-xs sticky left-0 z-30 bg-slate-900">
                   TOTAL MEMBERS ({memberList.length})
                 </td>
                 <td className="px-3 py-3 border-r border-slate-800 text-center text-slate-300 font-sans text-xs bg-slate-900">
@@ -577,9 +592,9 @@ export const MembersDirectoryView: React.FC<MembersDirectoryViewProps> = ({
           onClick={(e) => {
             if (e.target === e.currentTarget) setEditingMember(null);
           }}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 motion-safe:animate-in motion-safe:fade-in duration-150"
         >
-          <div className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+          <div className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-95 duration-150">
             {/* Header */}
             <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between border-b border-slate-800">
               <div className="flex items-center gap-2.5">
@@ -605,7 +620,7 @@ export const MembersDirectoryView: React.FC<MembersDirectoryViewProps> = ({
             {/* Form */}
             <form onSubmit={handleSaveEdit} className="p-6 space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
                   Member Name (সদস্যের নাম)
                 </label>
                 <input
@@ -620,7 +635,7 @@ export const MembersDirectoryView: React.FC<MembersDirectoryViewProps> = ({
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
                     Phone Number (মোবাইল নম্বর)
                   </label>
                   <input
@@ -633,7 +648,7 @@ export const MembersDirectoryView: React.FC<MembersDirectoryViewProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
                     National ID / NID (জাতীয় পরিচয়পত্র)
                   </label>
                   <input
@@ -647,7 +662,7 @@ export const MembersDirectoryView: React.FC<MembersDirectoryViewProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
                   Permanent / Present Address (ঠিকানা)
                 </label>
                 <textarea
@@ -676,7 +691,7 @@ export const MembersDirectoryView: React.FC<MembersDirectoryViewProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-sm transition-all inline-flex items-center gap-1.5 cursor-pointer"
+                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-sm transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 inline-flex items-center gap-1.5 cursor-pointer"
                 >
                   <Save className="w-3.5 h-3.5" />
                   <span>Save &amp; Sync Everywhere</span>
@@ -686,6 +701,14 @@ export const MembersDirectoryView: React.FC<MembersDirectoryViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* Due & Late Fee Calculation Breakdown Modal */}
+      <CalculationBreakdownModal
+        isOpen={!!breakdownShare}
+        onClose={() => setBreakdownShare(null)}
+        share={breakdownShare}
+        onOpenPaymentForShare={onOpenPaymentForShare}
+      />
     </div>
   );
 };

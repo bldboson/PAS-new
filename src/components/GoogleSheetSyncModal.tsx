@@ -109,7 +109,7 @@ export const GoogleSheetSyncModal: React.FC<GoogleSheetSyncModalProps> = ({
       onClick={(e) => {
         if (e.target === e.currentTarget && !confirmAction) onClose();
       }}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 overflow-y-auto"
     >
       <div className="relative w-full max-w-xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-8">
         {/* Header */}
@@ -195,9 +195,9 @@ export const GoogleSheetSyncModal: React.FC<GoogleSheetSyncModalProps> = ({
               ) : (
                 <button
                   onClick={onSignIn}
-                  className="px-4 py-2 rounded-lg bg-white border border-slate-300 hover:border-slate-400 text-slate-800 font-semibold text-xs shadow-xs inline-flex items-center gap-2 cursor-pointer transition-all hover:shadow"
+                  className="px-4 py-2 rounded-lg bg-white border border-slate-300 hover:border-slate-400 text-slate-800 font-semibold text-xs shadow-xs inline-flex items-center gap-2 cursor-pointer transition-colors duration-150"
                 >
-                  <svg className="w-4 h-4" viewBox="0 0 48 48">
+                  <svg className="w-4 h-4" viewBox="0 0 48 48" aria-hidden="true">
                     <path
                       fill="#EA4335"
                       d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"
@@ -228,8 +228,8 @@ export const GoogleSheetSyncModal: React.FC<GoogleSheetSyncModalProps> = ({
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
                     <div className="flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                      <span className="text-xs font-bold uppercase tracking-wider text-emerald-800">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse motion-reduce:animate-none" />
+                      <span className="text-xs font-semibold text-emerald-800">
                         Active Google Sheet
                       </span>
                     </div>
@@ -336,7 +336,7 @@ export const GoogleSheetSyncModal: React.FC<GoogleSheetSyncModalProps> = ({
                     onChange={(e) => onToggleAutoSync(e.target.checked)}
                     className="sr-only peer"
                   />
-                  <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
+                  <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-transform duration-150 peer-checked:bg-emerald-600"></div>
                 </label>
               </div>
             </div>
@@ -428,7 +428,7 @@ export const GoogleSheetSyncModal: React.FC<GoogleSheetSyncModalProps> = ({
 
       {/* Mandatory User Confirmation Dialog for Mutating Workspace Operations */}
       {confirmAction && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs">
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-950/75">
           <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-300 p-6 animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center gap-3 mb-3">
               <div

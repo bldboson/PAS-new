@@ -3,11 +3,49 @@ import assert from 'node:assert/strict';
 import {
   calculateShareRecord,
   calculateSocietySummary,
+  calculateCompoundDue,
+  getPenaltyStage,
   formatTaka,
   takaInWords,
 } from './calculations.ts';
 import { INITIAL_SHARES } from '../data/initialData.ts';
 import type { ShareRecord } from '../types.ts';
+
+test('calculateCompoundDue matches user exact timeline and compounding values', () => {
+  // Month 1: 1 due month
+  // Day 1-15: 2800
+  const m1_s1 = calculateCompoundDue(1, 10);
+  assert.equal(m1_s1.totalDue, 2800);
+  assert.equal(m1_s1.penaltyDue, 0);
+  assert.equal(m1_s1.principalDue, 2800);
+
+  // Day 16-20: 2800 + 150 = 2950
+  const m1_s2 = calculateCompoundDue(1, 18);
+  assert.equal(m1_s2.totalDue, 2950);
+  assert.equal(m1_s2.penaltyDue, 150);
+
+  // Day 21-End: 2950 + 15% = 3392.50
+  const m1_s3 = calculateCompoundDue(1, 25);
+  assert.equal(m1_s3.totalDue, 3392.50);
+  assert.equal(m1_s3.penaltyDue, 592.50);
+
+  // Month 2: 2 due months
+  // Day 1-15: 3392.50 + 2800 = 6192.50
+  const m2_s1 = calculateCompoundDue(2, 10);
+  assert.equal(m2_s1.totalDue, 6192.50);
+  assert.equal(m2_s1.principalDue, 5600);
+  assert.equal(m2_s1.penaltyDue, 592.50);
+
+  // Day 16-20: 6192.50 + 150 = 6342.50
+  const m2_s2 = calculateCompoundDue(2, 18);
+  assert.equal(m2_s2.totalDue, 6342.50);
+  assert.equal(m2_s2.penaltyDue, 742.50);
+
+  // Day 21-End: 6342.50 + 15% = 7293.875
+  const m2_s3 = calculateCompoundDue(2, 25);
+  assert.equal(m2_s3.totalDue, 7293.875);
+  assert.equal(m2_s3.penaltyDue, 1693.875);
+});
 
 test('calculateShareRecord calculates paid share correctly', () => {
   const share: ShareRecord = {
@@ -57,16 +95,28 @@ test('calculateShareRecord calculates due share and late fee correctly', () => {
     lateFeePaid: 0,
   };
 
-  const calculated = calculateShareRecord(share);
-  assert.equal(calculated.totalDeposit, 7800); // 5000 + 2800
-  assert.equal(calculated.dueMonths, 2);
-  assert.equal(calculated.dueAmount, 5600);
-  assert.equal(calculated.lateFee, 280); // 10% of 2800
-  assert.equal(calculated.totalDue, 5880); // 5600 + 280
+  // On day 10 (Stage 1: 1-15th): Month 1 compounded (3392.5) + Month 2 installment (2800) = 6192.5
+  const calculatedDay10 = calculateShareRecord(share, 10);
+  assert.equal(calculatedDay10.totalDeposit, 7800); // 5000 + 2800
+  assert.equal(calculatedDay10.dueMonths, 2);
+  assert.equal(calculatedDay10.dueAmount, 5600);
+  assert.equal(calculatedDay10.lateFee, 592.5); // 3392.5 - 2800
+  assert.equal(calculatedDay10.totalDue, 6192.5);
+
+  // On day 18 (Stage 2: 16-20th): 6192.5 + 150 = 6342.5
+  const calculatedDay18 = calculateShareRecord(share, 18);
+  assert.equal(calculatedDay18.lateFee, 742.5);
+  assert.equal(calculatedDay18.totalDue, 6342.5);
+
+  // On day 25 (Stage 3: 21-End): 6342.5 + 15% = 7293.875
+  const calculatedDay25 = calculateShareRecord(share, 25);
+  assert.equal(calculatedDay25.lateFee, 1693.875);
+  assert.equal(calculatedDay25.totalDue, 7293.875);
 });
 
-test('calculateSocietySummary matches the Progressive Association Society Excel metrics', () => {
-  const summary = calculateSocietySummary(INITIAL_SHARES);
+test('calculateSocietySummary matches the dynamic timeline metrics', () => {
+  // Test on day 10 (Stage 1: 1-15th)
+  const summary = calculateSocietySummary(INITIAL_SHARES, 10);
 
   assert.equal(summary.totalActiveShares, 30, 'Total active shares must be 30');
   assert.equal(summary.totalAdmissionCollected, 160000, 'Admission total must be 160,000');
@@ -74,8 +124,8 @@ test('calculateSocietySummary matches the Progressive Association Society Excel 
   assert.equal(summary.totalBankDeposit, 395200, 'Total bank deposit must be 395,200');
   assert.equal(summary.totalDueMonths, 6, 'Total due months must be 6 (3 members x 2 months)');
   assert.equal(summary.totalDuePrincipal, 16800, 'Total due principal must be 16,800');
-  assert.equal(summary.totalLateFeeDue, 840, 'Total late fee due must be 840 (3 x 280)');
-  assert.equal(summary.totalOutstandingDue, 17640, 'Total outstanding due must be 17,640');
+  assert.equal(summary.totalLateFeeDue, 1777.5, 'Total late fee due on day 10 is 1777.5 (3 x 592.5)');
+  assert.equal(summary.totalOutstandingDue, 18577.5, 'Total outstanding due must be 18,577.5');
   assert.equal(summary.collectionEfficiency, 95.9, 'Collection efficiency must be 95.9%');
   assert.equal(summary.monthStats['Aug-26'].paidAmount, 84000, 'Aug-26 collection must be 84,000');
   assert.equal(summary.monthStats['Sep-26'].paidAmount, 75600, 'Sep-26 collection must be 75,600');
@@ -148,5 +198,5 @@ test('formatSharesForSheet generates exact Image 2 layout with 38 rows and perfe
   assert.equal(rows[37][2], '32 IDs');
   assert.equal(rows[37][3], 160000);
   assert.equal(rows[37][14], 395200);
-  assert.equal(rows[37][18], 17640);
+  assert.equal(rows[37][18], summary.totalOutstandingDue);
 });

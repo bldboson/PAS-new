@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { ShareRecord, MonthKey } from '../types';
 import { formatTaka, takaInWords } from '../utils/calculations';
 import { Printer, X, ShieldCheck, Trash2, Edit3, AlertTriangle } from 'lucide-react';
@@ -36,7 +36,17 @@ export const MoneyReceiptModal: React.FC<MoneyReceiptModalProps> = ({
   const amount = payment.amount || 2800;
   const words = takaInWords(amount);
   const receiptNo = `PAS-${month.replace('-', '')}-${share.id.replace('PAS-', '')}`;
-  const paymentDate = payment.date ? `${payment.date.split('.').join('/')}` : '15/09/2026';
+  const paymentDate = useMemo(() => {
+    if (!payment.date) return '15/09/2026';
+    if (payment.date.includes('.')) return payment.date.split('.').join('/');
+    if (payment.date.includes('-')) {
+      const parts = payment.date.split('-');
+      if (parts.length === 3) {
+        return `${parts[2]}/${parts[1]}/${parts[0]}`;
+      }
+    }
+    return payment.date;
+  }, [payment.date]);
 
   const handlePrint = () => {
     window.print();
@@ -55,13 +65,13 @@ export const MoneyReceiptModal: React.FC<MoneyReceiptModalProps> = ({
       onClick={(e) => {
         if (e.target === e.currentTarget && !showConfirmVoid) onClose();
       }}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto print:static print:p-0 print:bg-white print:overflow-visible print:block print-modal"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 overflow-y-auto print:static print:p-0 print:bg-white print:overflow-visible print:block print-modal"
     >
       <div className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-8 print:m-0 print:border-none print:shadow-none print:max-w-none print:w-full print:block">
         {/* Top Control Bar (Hidden when printing) */}
         <div className="flex flex-wrap items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50 gap-2 print:hidden">
           <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse motion-reduce:animate-none" />
             <h3 className="font-bold text-slate-800 text-sm">Official Money Receipt</h3>
           </div>
           <div className="flex items-center flex-wrap gap-2">
@@ -73,7 +83,7 @@ export const MoneyReceiptModal: React.FC<MoneyReceiptModalProps> = ({
                     onClose();
                   }, 'edit payment entry');
                 }}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-100 text-slate-700 text-xs font-semibold transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none text-slate-700 text-xs font-semibold transition-colors cursor-pointer"
                 title="Edit payment amount, date or notes"
               >
                 <Edit3 className="w-3.5 h-3.5 text-blue-600" />
@@ -121,32 +131,32 @@ export const MoneyReceiptModal: React.FC<MoneyReceiptModalProps> = ({
                 className="w-16 h-16 object-contain"
               />
             </div>
-            <div className="inline-block px-3 py-1 rounded-full bg-slate-100 text-slate-800 font-bold text-[11px] uppercase tracking-wider mb-2">
-              Govt. Registered Multipurpose Cooperative Society
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-950 uppercase">
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-950">
               PROGRESSIVE ASSOCIATION SOCIETY
             </h1>
-            <p className="text-xs sm:text-sm text-slate-600 font-medium mt-1">
+            <p className="text-xs text-slate-600 font-semibold mt-1">
+              Govt. Registered Multipurpose Cooperative Society &bull; Reg No: PAS/DH/2026/049
+            </p>
+            <p className="text-xs text-slate-500 mt-0.5">
               Central Office: Plot #14, Sector #03, Uttara Model Town, Dhaka-1230, Bangladesh
             </p>
             <p className="text-[11px] text-slate-500 mt-0.5">
-              Email: info@pas-society.org.bd | Helpline: +880 1711-000000 | Reg No: PAS/DH/2026/049
+              Email: info@pas-society.org.bd | Helpline: +880 1711-000000
             </p>
-            <div className="mt-3 inline-block px-4 py-1 bg-slate-900 text-white font-bold text-xs uppercase tracking-widest rounded">
-              MONEY RECEIPT (MEMBER COPY)
+            <div className="mt-3 inline-block px-4 py-1 bg-slate-900 text-white font-bold text-xs rounded">
+              Money Receipt (Member Copy)
             </div>
           </div>
 
           {/* Receipt Info Line */}
-          <div className="grid grid-cols-2 gap-4 py-4 text-xs font-mono border-b border-slate-200">
+          <div className="grid grid-cols-2 gap-4 py-4 text-xs border-b border-slate-200">
             <div>
               <span className="text-slate-500 font-sans font-medium">Receipt No: </span>
-              <strong className="text-slate-900">{receiptNo}</strong>
+              <strong className="text-slate-900 font-mono">{receiptNo}</strong>
             </div>
             <div className="text-right">
               <span className="text-slate-500 font-sans font-medium">Issue Date: </span>
-              <strong className="text-slate-900">{paymentDate}</strong>
+              <strong className="text-slate-900 font-mono">{paymentDate}</strong>
             </div>
           </div>
 
@@ -171,7 +181,7 @@ export const MoneyReceiptModal: React.FC<MoneyReceiptModalProps> = ({
               <div className="flex items-baseline gap-2">
                 <span className="text-slate-600 font-medium whitespace-nowrap">Payment Method:</span>
                 <span className="font-semibold text-slate-900">
-                  {payment.paymentMethod || 'Bank Deposit / Islami Bank Bangladesh PLC'}
+                  {payment.paymentMethod || 'Bank Deposit'}
                 </span>
               </div>
             </div>
@@ -198,7 +208,7 @@ export const MoneyReceiptModal: React.FC<MoneyReceiptModalProps> = ({
           {/* Amount Box & Society Seal */}
           <div className="my-6 p-4 bg-slate-50 border-2 border-slate-300 rounded-xl flex items-center justify-between">
             <div>
-              <span className="text-xs uppercase tracking-wider text-slate-500 font-semibold block">
+              <span className="text-xs text-slate-500 font-semibold block">
                 Total Amount Received
               </span>
               <span className="text-2xl sm:text-3xl font-extrabold text-emerald-800 font-mono tracking-tight">
@@ -206,10 +216,10 @@ export const MoneyReceiptModal: React.FC<MoneyReceiptModalProps> = ({
               </span>
             </div>
             <div className="text-right">
-              <div className="w-20 h-20 rounded-full border-2 border-dashed border-emerald-600 flex flex-col items-center justify-center text-emerald-700 text-[10px] font-bold uppercase rotate-[-6deg]">
+              <div className="w-20 h-20 rounded-full border-2 border-dashed border-emerald-600 flex flex-col items-center justify-center text-emerald-700 text-[10px] font-bold rotate-[-6deg]">
                 <ShieldCheck className="w-5 h-5 mb-0.5" />
-                <span>PA SOCIETY</span>
-                <span>VERIFIED</span>
+                <span>PA Society</span>
+                <span>Verified</span>
               </div>
             </div>
           </div>
@@ -238,8 +248,8 @@ export const MoneyReceiptModal: React.FC<MoneyReceiptModalProps> = ({
 
       {/* Confirmation Dialog to Void/Delete Payment */}
       {showConfirmVoid && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs">
-          <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-300 p-6 animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-950/80">
+          <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-300 p-6 animate-in fade-in zoom-in-95 duration-150 motion-reduce:animate-none">
             <div className="flex items-center gap-3 mb-3">
               <div className="w-10 h-10 rounded-full bg-rose-100 text-rose-700 flex items-center justify-center shrink-0">
                 <AlertTriangle className="w-5 h-5" />
@@ -263,7 +273,7 @@ export const MoneyReceiptModal: React.FC<MoneyReceiptModalProps> = ({
                 className="w-full text-left p-3 rounded-xl border border-amber-300 bg-amber-50/70 hover:bg-amber-100 transition-colors cursor-pointer"
               >
                 <span className="font-bold text-amber-900 text-xs block">
-                  Mark as Overdue (বকেয়া রাখুন - Due + 10% Late Fee)
+                  Mark as Overdue (বকেয়া রাখুন - Due + Late Fine)
                 </span>
                 <span className="text-[11px] text-slate-600 block mt-0.5">
                   Restores installment as overdue with applicable late fee calculation.

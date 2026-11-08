@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { ShareRecord, MonthKey } from '../types';
-import { formatTaka } from '../utils/calculations';
-import { AlertTriangle, Copy, Check, MessageSquare, CreditCard, ExternalLink, ShieldAlert } from 'lucide-react';
+import { formatTaka, getPenaltyStage } from '../utils/calculations';
+import { useLanguage } from '../context/LanguageContext';
+import { AlertTriangle, Copy, Check, MessageSquare, CreditCard, ExternalLink, ShieldAlert, Clock } from 'lucide-react';
 
 interface OverdueRemindersViewProps {
   shares: ShareRecord[];
@@ -14,7 +15,9 @@ export const OverdueRemindersView: React.FC<OverdueRemindersViewProps> = ({
   onOpenPaymentForShare,
   onClearFullDue,
 }) => {
+  const { t } = useLanguage();
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const penaltyStage = getPenaltyStage();
 
   const dueShares = shares.filter((s) => !s.isClosed && s.dueMonths > 0);
   const totalDuePrincipal = dueShares.reduce((sum, s) => sum + s.dueAmount, 0);
@@ -23,12 +26,17 @@ export const OverdueRemindersView: React.FC<OverdueRemindersViewProps> = ({
 
   const handleCopyReminder = (share: ShareRecord) => {
     const text = `Assalamu Alaikum ${share.memberName},
-This is a gentle payment reminder from PROGRESSIVE ASSOCIATION SOCIETY.
-According to our records for Share ID: ${share.id}:
-- Due Installments: Month of Sep-26 & Oct-26
-- Principal Due: ${formatTaka(share.dueAmount)} (${share.dueMonths} months @ Tk. 2,800)
-- Late Fee (10%): ${formatTaka(share.lateFee)}
+This is a payment notice from PROGRESSIVE ASSOCIATION SOCIETY.
+According to our ledger for Share ID: ${share.id}:
+- Overdue Months: ${share.dueMonths} month(s)
+- Principal Due: ${formatTaka(share.dueAmount)} (@ Tk. 2,800/month)
+- Late Fee / Penalty (Jorimana): ${formatTaka(share.lateFee)} (Current Stage: ${penaltyStage.name})
 - Total Payable: ${formatTaka(share.totalDue)}
+
+Timeline Policy:
+• 1st–15th: Regular due (Tk. 2,800/month)
+• 16th–20th: +Tk. 150 fine added
+• 21st–Month End: +15% surcharge added
 
 Please deposit the due amount into the Society Bank Account or send via bKash/Nagad and confirm your deposit slip with the Treasurer.
 Thank you for your active cooperation!
@@ -50,7 +58,7 @@ Thank you for your active cooperation!
             </div>
             <div>
               <h2 className="text-lg font-bold text-slate-900">
-                Outstanding Due &amp; Late Fee Recovery Console
+                {t('overdueConsoleTitle')}
               </h2>
               <p className="text-xs sm:text-sm text-slate-600 mt-0.5">
                 Currently <strong>{dueShares.length} shares</strong> are overdue for 2 installment cycles (Sep-26 &amp; Oct-26).
@@ -60,7 +68,7 @@ Thank you for your active cooperation!
 
           <div className="flex items-center gap-3">
             <div className="bg-white px-4 py-2 rounded-lg border border-amber-200 shadow-xs">
-              <span className="text-[11px] font-semibold text-slate-500 block uppercase">Total Dues</span>
+              <span className="text-[11px] font-semibold text-slate-500 block">{t('totalDues')}</span>
               <span className="text-xl font-extrabold text-rose-700 font-mono">
                 {formatTaka(totalOutstanding)}
               </span>
@@ -84,18 +92,18 @@ Thank you for your active cooperation!
           {dueShares.map((share) => (
             <div
               key={share.id}
-              className="bg-white rounded-xl border-2 border-amber-300/90 shadow-sm overflow-hidden flex flex-col justify-between"
+              className="bg-white rounded-2xl border-2 border-amber-300/90 shadow-xs hover:shadow-md transition-shadow duration-150 overflow-hidden flex flex-col justify-between"
             >
               <div className="p-5">
                 <div className="flex items-start justify-between gap-2 mb-3">
                   <div>
-                    <span className="text-xs font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-900 font-mono">
+                    <span className="text-xs font-bold px-2 py-0.5 rounded-lg bg-amber-100 text-amber-900 font-mono">
                       {share.id}
                     </span>
                     <h3 className="text-base font-bold text-slate-900 mt-1.5">{share.memberName}</h3>
-                    <p className="text-xs text-slate-500">{share.phone || '+880 1700-000000'}</p>
+                    <p className="text-xs text-slate-500 font-mono">{share.phone || '+880 1700-000000'}</p>
                   </div>
-                  <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-rose-700 border border-rose-200">
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-rose-700 border border-rose-200">
                     {share.dueMonths} Mths Overdue
                   </span>
                 </div>
@@ -103,29 +111,29 @@ Thank you for your active cooperation!
                 {/* Overdue Calculation Details */}
                 <div className="space-y-2 py-3 border-y border-slate-100 text-xs">
                   <div className="flex justify-between text-slate-600">
-                    <span>Missed Months:</span>
+                    <span>{t('missedMonths')}:</span>
                     <span className="font-semibold text-slate-800">Sep-26, Oct-26</span>
                   </div>
                   <div className="flex justify-between text-slate-600">
-                    <span>Principal Installments (2x Tk. 2,800):</span>
+                    <span>{t('principal')} (2x Tk. 2,800):</span>
                     <span className="font-bold text-slate-800 font-mono">{formatTaka(share.dueAmount)}</span>
                   </div>
                   <div className="flex justify-between text-slate-600">
-                    <span>Late Fee Penalty (10%):</span>
+                    <span>{t('lateFeeFine')}:</span>
                     <span className="font-bold text-rose-600 font-mono">+{formatTaka(share.lateFee)}</span>
                   </div>
                   <div className="flex justify-between pt-1 border-t border-slate-200 text-sm font-bold">
-                    <span className="text-slate-900">Total Outstanding:</span>
+                    <span className="text-slate-900">{t('totalOutstanding')}:</span>
                     <span className="text-rose-700 font-mono text-base">{formatTaka(share.totalDue)}</span>
                   </div>
                 </div>
 
                 {/* WhatsApp & SMS template preview */}
-                <div className="mt-4 p-3 bg-slate-50 rounded-lg text-xs text-slate-600">
+                <div className="mt-4 p-3 bg-slate-50/80 rounded-xl border border-slate-200/80 text-xs text-slate-600">
                   <div className="flex items-center justify-between mb-1.5 font-semibold text-slate-700">
                     <span className="flex items-center gap-1.5">
                       <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>WhatsApp / SMS Reminder</span>
+                      <span>{t('whatsAppNotice')}</span>
                     </span>
                     <button
                       onClick={() => handleCopyReminder(share)}
@@ -139,7 +147,7 @@ Thank you for your active cooperation!
                       ) : (
                         <>
                           <Copy className="w-3.5 h-3.5" />
-                          <span>Copy Message</span>
+                          <span>{t('copy')}</span>
                         </>
                       )}
                     </button>
@@ -151,19 +159,19 @@ Thank you for your active cooperation!
               </div>
 
               {/* Action Buttons */}
-              <div className="p-4 bg-slate-50 border-t border-slate-100 flex flex-col sm:flex-row gap-2">
+              <div className="p-4 bg-slate-50/70 border-t border-slate-100 flex flex-col sm:flex-row gap-2">
                 <button
                   onClick={() => onClearFullDue(share.id, false)}
-                  className="flex-1 px-3 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer text-center"
+                  className="flex-1 px-3 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold shadow-xs transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 cursor-pointer text-center"
                 >
-                  Clear Full Due ({formatTaka(share.totalDue)})
+                  {t('clearDue')} ({formatTaka(share.totalDue)})
                 </button>
                 <button
                   onClick={() => onClearFullDue(share.id, true)}
-                  className="px-3 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-medium transition-colors cursor-pointer text-center"
-                  title="Clear principal installments and waive Tk. 280 late fee"
+                  className="px-3 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 cursor-pointer text-center"
+                  title="Clear principal installments and waive late fee fine"
                 >
-                  Waive Late Fee
+                  {t('waiveLateFee')}
                 </button>
               </div>
             </div>

@@ -77,94 +77,94 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75"
     >
-      <div className="relative w-full max-w-md bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
+      <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-200/90 overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-teal-100 text-teal-800 flex items-center justify-center">
+        <div className="px-5 py-4 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center">
               <UserPlus className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="font-bold text-slate-900 text-sm sm:text-base">Add New Society Share</h3>
-              <p className="text-[11px] text-slate-500">Allocate share certificate and admission slot</p>
+              <h3 className="font-bold text-sm sm:text-base text-white tracking-tight">Add New Society Share</h3>
+              <p className="text-[11px] text-slate-400">Allocate share certificate and admission slot</p>
             </div>
           </div>
           <button
             onClick={onClose}
             aria-label="Close add share dialog"
-            className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
+            className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4 text-xs sm:text-sm">
+        <form onSubmit={handleSubmit} className="p-5 space-y-4 text-xs sm:text-sm">
           <div>
-            <label className="block font-semibold text-slate-700 mb-1">Share ID No</label>
+            <label className="block font-semibold text-slate-700 text-xs mb-1">Share ID No</label>
             <input
               type="text"
               value={id}
-              onChange={(e) => setId(e.target.value)}
+              onChange={(e) => setId(e.target.value.toUpperCase())}
               placeholder="e.g. PAS-33"
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-900 font-mono font-bold focus:outline-teal-500 uppercase"
+              className="w-full px-3 py-2 border border-slate-300 rounded-xl text-slate-900 font-mono font-bold focus:ring-2 focus:ring-emerald-500 shadow-2xs"
               required
             />
           </div>
 
           <div>
-            <label className="block font-semibold text-slate-700 mb-1">Member Full Name</label>
+            <label className="block font-semibold text-slate-700 text-xs mb-1">Member Full Name</label>
             <input
               type="text"
               value={memberName}
               onChange={(e) => setMemberName(e.target.value)}
               placeholder="e.g. Md. Shahidul Alam"
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-900 focus:outline-teal-500"
+              className="w-full px-3 py-2 border border-slate-300 rounded-xl text-slate-900 focus:ring-2 focus:ring-emerald-500 shadow-2xs"
               required
             />
           </div>
 
           <div>
-            <label className="block font-semibold text-slate-700 mb-1">Contact Phone Number</label>
+            <label className="block font-semibold text-slate-700 text-xs mb-1">Contact Phone Number</label>
             <input
               type="text"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="+880 1711-XXXXXX"
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-900 font-mono focus:outline-teal-500"
+              className="w-full px-3 py-2 border border-slate-300 rounded-xl text-slate-900 font-mono focus:ring-2 focus:ring-emerald-500 shadow-2xs"
             />
           </div>
 
           <div>
-            <label className="block font-semibold text-slate-700 mb-1">Admission Fee (Tk.)</label>
+            <label className="block font-semibold text-slate-700 text-xs mb-1">Admission Fee (Tk.)</label>
             <input
               type="number"
               value={admissionFee}
               onChange={(e) => setAdmissionFee(Number(e.target.value))}
               min="0"
-              step="500"
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-900 font-mono font-bold focus:outline-teal-500"
+              step="any"
+              className="w-full px-3 py-2 border border-slate-300 rounded-xl text-slate-900 font-mono font-bold focus:ring-2 focus:ring-emerald-500 shadow-2xs"
               required
             />
-            <span className="text-[11px] text-slate-400 mt-0.5 block">
+            <span className="text-[10px] text-slate-400 mt-1 block">
               Standard society admission fee is Tk. 5,000 per share.
             </span>
           </div>
 
           {/* Submit */}
-          <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2.5">
+          <div className="pt-3 border-t border-slate-200/80 flex items-center justify-end gap-2.5">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-lg border border-slate-300 hover:bg-slate-100 text-slate-700 font-medium transition-colors cursor-pointer"
+              className="px-4 py-2 rounded-xl border border-slate-300 hover:bg-slate-100 text-slate-700 text-xs font-semibold transition-colors cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-5 py-2 rounded-lg bg-teal-600 hover:bg-teal-500 text-white font-bold shadow-sm transition-colors cursor-pointer"
+              className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs sm:text-sm font-bold shadow-md shadow-emerald-600/20 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 cursor-pointer"
             >
               Register Share
             </button>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ShareRecord, MonthKey, ALL_MONTHS, SocietySummary } from '../types';
-import { formatTaka } from '../utils/calculations';
+import { formatTaka, getPenaltyStage } from '../utils/calculations';
+import { CalculationBreakdownModal } from './CalculationBreakdownModal';
 import {
   Receipt,
   CreditCard,
@@ -12,9 +13,11 @@ import {
   SlidersHorizontal,
   ChevronLeft,
   Calendar,
-  Layers
+  Layers,
+  Calculator,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 
 interface MasterLedgerTableProps {
   shares: ShareRecord[];
@@ -43,37 +46,63 @@ export const MasterLedgerTable: React.FC<MasterLedgerTableProps> = ({
   onOpenMonthSettings,
 }) => {
   const { requireAdmin } = useAuth();
+  const { t } = useLanguage();
   const [shareToDelete, setShareToDelete] = useState<ShareRecord | null>(null);
+  const [breakdownShare, setBreakdownShare] = useState<ShareRecord | null>(null);
+
+  const currentPenaltyStage = getPenaltyStage();
 
   // Determine if months exceed 4 to apply horizontal scrolling specifically to the months section
   const isMonthScrollActive = activeMonths.length > 4;
   const isCurrentMonthOnly = activeMonths.length === 1 && activeMonths[0] === currentMonth;
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200/90 shadow-sm overflow-hidden">
+    <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
       {/* Table toolbar / header info */}
-      <div className="px-5 py-3.5 border-b border-slate-200 bg-slate-50/70 flex flex-col md:flex-row md:items-center justify-between gap-3">
+      <div className="px-5 py-3.5 border-b border-slate-200 bg-slate-50/80 flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div>
-            <h2 className="text-base font-bold text-slate-800 flex items-center gap-2">
-              <span>Comprehensive Share &amp; Installment Ledger</span>
-              <span className="text-xs font-semibold px-2 py-0.5 rounded bg-slate-200 text-slate-700">
-                {shares.length} Records
+            <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+              <span>{t('ledgerTitle')}</span>
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700">
+                {shares.length} {t('records')}
               </span>
             </h2>
           </div>
         </div>
 
         {/* Setting Button & Month Visibility Status */}
-        <div className="flex items-center flex-wrap gap-2.5">
+        <div className="flex items-center flex-wrap gap-2">
+          {/* Active Penalty Stage Badge */}
+          <div
+            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold border cursor-pointer hover:opacity-90 shadow-2xs ${
+              currentPenaltyStage.stage === 1
+                ? 'bg-emerald-50 border-emerald-300 text-emerald-900'
+                : currentPenaltyStage.stage === 2
+                ? 'bg-amber-50 border-amber-300 text-amber-900'
+                : 'bg-rose-50 border-rose-300 text-rose-900'
+            }`}
+            title={`${currentPenaltyStage.description} — Click on any Due/Fee cell in the table to see the full calculation breakdown.`}
+          >
+            <span
+              className={`w-2 h-2 rounded-full ${
+                currentPenaltyStage.stage === 1
+                  ? 'bg-emerald-500'
+                  : currentPenaltyStage.stage === 2
+                  ? 'bg-amber-500'
+                  : 'bg-rose-500 animate-pulse motion-reduce:animate-none'
+              }`}
+            />
+            <span>{currentPenaltyStage.badge}</span>
+          </div>
+
           {isCurrentMonthOnly ? (
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-300 text-amber-900 text-xs font-bold">
-              <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-              <span>Current Month Display: <strong>{currentMonth}</strong></span>
-              <span className="text-[10px] text-amber-700 font-normal hidden sm:inline">(Calculations exact)</span>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs font-bold">
+              <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse motion-reduce:animate-none" />
+              <span>{t('currentMonth')}: <strong>{currentMonth}</strong></span>
             </div>
           ) : (
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold">
               <Calendar className="w-3.5 h-3.5 text-emerald-600" />
               <span>Active: {activeMonths.join(', ')}</span>
             </div>
@@ -87,11 +116,11 @@ export const MasterLedgerTable: React.FC<MasterLedgerTableProps> = ({
                 onOpenMonthSettings();
               }, 'configure ledger months and display settings');
             }}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 hover:border-slate-400 text-xs font-bold shadow-2xs transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 hover:border-slate-400 text-xs font-bold shadow-2xs transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 cursor-pointer"
             title="Configure billing months: Add, remove, hide, or focus on current month"
           >
             <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Month Settings</span>
+            <span>{t('monthSettings')}</span>
             {isMonthScrollActive && (
               <span className="px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 text-[10px]">
                 Scroll
@@ -108,17 +137,17 @@ export const MasterLedgerTable: React.FC<MasterLedgerTableProps> = ({
           <thead className="bg-slate-100 text-slate-700 border-b border-slate-300 font-semibold select-none">
             {/* Top row */}
             <tr>
-              <th rowSpan={2} className="px-2 py-2.5 border-r border-slate-300 w-10 text-center bg-slate-100/90 sticky left-0 z-10 shadow-[1px_0_0_0_#cbd5e1]">
-                SL
+              <th rowSpan={2} className="px-2 py-2.5 border-r border-slate-300 w-10 text-center bg-slate-100 sticky left-0 z-10">
+                {t('colSl')}
               </th>
-              <th rowSpan={2} className="px-2.5 py-2.5 border-r border-slate-300 min-w-[130px] lg:min-w-[160px] sticky left-10 z-10 bg-slate-100/90 shadow-[1px_0_0_0_#cbd5e1]">
-                Member Name
+              <th rowSpan={2} className="px-2.5 py-2.5 border-r border-slate-300 min-w-[130px] lg:min-w-[160px] sticky left-10 z-10 bg-slate-100">
+                {t('colMemberName')}
               </th>
               <th rowSpan={2} className="px-2 py-2.5 border-r border-slate-300 text-center min-w-[70px]">
-                Share ID
+                {t('colShareId')}
               </th>
               <th rowSpan={2} className="px-2 py-2.5 border-r border-slate-300 text-right min-w-[75px] bg-slate-50">
-                Admission Fee
+                {t('colAdmissionFee')}
               </th>
 
               {/* Month Columns Groups - Only displays activeMonths */}
@@ -137,8 +166,8 @@ export const MasterLedgerTable: React.FC<MasterLedgerTableProps> = ({
                     <div className="flex items-center justify-center gap-1">
                       <span>{m}</span>
                       {isCurrent && (
-                        <span className="text-[9px] uppercase px-1 py-0.2 rounded bg-white/20 text-white font-semibold">
-                          Current
+                        <span className="text-[9px] px-1 py-0.2 rounded bg-white/20 text-white font-semibold">
+                          {t('currentMonth')}
                         </span>
                       )}
                     </div>
@@ -147,25 +176,25 @@ export const MasterLedgerTable: React.FC<MasterLedgerTableProps> = ({
               })}
 
               <th rowSpan={2} className="px-2 py-2.5 border-r border-slate-300 text-right min-w-[80px] bg-emerald-50/70 text-emerald-900 font-bold">
-                Total Deposit
+                {t('colTotalDeposit')}
               </th>
               <th rowSpan={2} className="px-1.5 py-2.5 border-r border-slate-300 text-center min-w-[50px] bg-amber-50/40">
-                Due Mths
+                {t('colDueMths')}
               </th>
               <th rowSpan={2} className="px-2 py-2.5 border-r border-slate-300 text-right min-w-[75px] bg-amber-50/70 text-amber-900">
-                Due Amount
+                {t('colDueAmount')}
               </th>
               <th rowSpan={2} className="px-1.5 py-2.5 border-r border-slate-300 text-right min-w-[65px] bg-rose-50/50 text-rose-900">
-                Late Fee (10%)
+                {t('colLateFeeFine')}
               </th>
               <th rowSpan={2} className="px-2 py-2.5 border-r border-slate-300 text-right min-w-[75px] bg-rose-100/70 text-rose-950 font-bold">
-                Total Due
+                {t('colTotalDue')}
               </th>
               <th rowSpan={2} className="px-1.5 py-2.5 border-r border-slate-300 text-center min-w-[60px]">
-                Late Fee Paid
+                {t('colLateFeePaid')}
               </th>
               <th rowSpan={2} className="px-2 py-2.5 text-center min-w-[80px]">
-                Actions
+                {t('colActions')}
               </th>
             </tr>
 
@@ -174,10 +203,10 @@ export const MasterLedgerTable: React.FC<MasterLedgerTableProps> = ({
               {activeMonths.map((m) => (
                 <React.Fragment key={`${m}-sub`}>
                   <th className="px-2 py-1.5 border-r border-slate-200 text-center font-medium w-16">
-                    Date
+                    {t('colDate')}
                   </th>
                   <th className="px-2 py-1.5 border-r border-slate-300 text-right font-medium w-16">
-                    Amount
+                    {t('colAmount')}
                   </th>
                 </React.Fragment>
               ))}
@@ -205,7 +234,7 @@ export const MasterLedgerTable: React.FC<MasterLedgerTableProps> = ({
                 >
                   {/* SL */}
                   <td
-                    className={`px-2 py-2 border-r border-slate-200 text-center font-sans text-slate-500 sticky left-0 z-10 shadow-[1px_0_0_0_#e2e8f0] ${
+                    className={`px-2 py-2 border-r border-slate-200 text-center font-sans text-slate-500 sticky left-0 z-10 ${
                       isClosed
                         ? 'bg-slate-100'
                         : hasDue
@@ -220,7 +249,7 @@ export const MasterLedgerTable: React.FC<MasterLedgerTableProps> = ({
 
                   {/* Member Name */}
                   <td
-                    className={`px-3 py-2 border-r border-slate-200 font-sans font-bold text-sm text-slate-900 sticky left-10 z-10 shadow-[1px_0_0_0_#e2e8f0] ${
+                    className={`px-3 py-2 border-r border-slate-200 font-sans font-bold text-sm text-slate-900 sticky left-10 z-10 ${
                       isClosed
                         ? 'bg-slate-100'
                         : hasDue
@@ -355,20 +384,58 @@ export const MasterLedgerTable: React.FC<MasterLedgerTableProps> = ({
 
                   {/* Due Amount */}
                   <td className="px-2.5 py-2 border-r border-slate-200 text-right font-medium text-amber-900 bg-amber-50/30">
-                    {share.dueAmount > 0 ? share.dueAmount.toLocaleString('en-IN') : '-'}
+                    {share.dueAmount > 0 ? (
+                      <button
+                        type="button"
+                        onClick={() => setBreakdownShare(share)}
+                        className="hover:underline font-mono font-bold text-amber-900 inline-flex items-center gap-1 cursor-pointer group"
+                        title="Click to view total due & late fee breakdown"
+                      >
+                        <span>{share.dueAmount.toLocaleString('en-IN')}</span>
+                        <Calculator className="w-3 h-3 text-amber-600 opacity-60 group-hover:opacity-100 transition-opacity" />
+                      </button>
+                    ) : (
+                      '-'
+                    )}
                   </td>
 
                   {/* Late Fee */}
                   <td className="px-2 py-2 border-r border-slate-200 text-right text-rose-700">
-                    {share.lateFee > 0 ? share.lateFee.toLocaleString('en-IN') : '-'}
+                    {share.lateFee > 0 ? (
+                      <button
+                        type="button"
+                        onClick={() => setBreakdownShare(share)}
+                        className="hover:underline font-mono font-bold text-rose-700 inline-flex items-center gap-1 cursor-pointer group"
+                        title="Click to view total due & late fee breakdown"
+                      >
+                        <span>
+                          {Number(share.lateFee.toFixed(2)).toLocaleString('en-IN', {
+                            maximumFractionDigits: 2,
+                          })}
+                        </span>
+                        <Calculator className="w-3 h-3 text-rose-500 opacity-60 group-hover:opacity-100 transition-opacity" />
+                      </button>
+                    ) : (
+                      '-'
+                    )}
                   </td>
 
                   {/* Total Due */}
                   <td className="px-2.5 py-2 border-r border-slate-200 text-right font-bold text-rose-800 bg-rose-50/40">
                     {share.totalDue > 0 ? (
-                      <span className="text-rose-700 font-extrabold">
-                        {share.totalDue.toLocaleString('en-IN')}
-                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setBreakdownShare(share)}
+                        className="hover:underline font-mono font-extrabold text-rose-700 inline-flex items-center gap-1 cursor-pointer group"
+                        title="Click to view total due & late fee breakdown"
+                      >
+                        <span>
+                          {Number(share.totalDue.toFixed(2)).toLocaleString('en-IN', {
+                            maximumFractionDigits: 2,
+                          })}
+                        </span>
+                        <Calculator className="w-3 h-3 text-rose-600 opacity-70 group-hover:opacity-100 transition-opacity" />
+                      </button>
                     ) : (
                       <span className="text-slate-400">-</span>
                     )}
@@ -384,14 +451,14 @@ export const MasterLedgerTable: React.FC<MasterLedgerTableProps> = ({
                     <div className="flex items-center justify-center gap-1.5">
                       <button
                         onClick={() => onOpenPaymentForShare(share)}
-                        className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
+                        className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-2xs transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 cursor-pointer"
                         title="Record payment or dues"
                       >
-                        Pay
+                        {t('payBtn')}
                       </button>
                       <button
                         onClick={() => onOpenReceiptForShare(share, activeMonths[0] as MonthKey || 'Oct-26')}
-                        className="p-1 rounded text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 transition-colors cursor-pointer"
+                        className="p-1 rounded-lg text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 transition-colors cursor-pointer"
                         title="View Official Money Receipt"
                       >
                         <Receipt className="w-4 h-4" />
@@ -399,7 +466,7 @@ export const MasterLedgerTable: React.FC<MasterLedgerTableProps> = ({
                       {onDeleteShare && !isClosed && (
                         <button
                           onClick={() => setShareToDelete(share)}
-                          className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                          className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
                           title="Delete share from register"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -413,10 +480,10 @@ export const MasterLedgerTable: React.FC<MasterLedgerTableProps> = ({
           </tbody>
 
           {/* Grand Total Row matching the original Excel spreadsheet - Frozen at Bottom */}
-          <tfoot className="sticky bottom-0 z-20 bg-slate-900 text-white font-mono font-bold shadow-[0_-3px_8px_rgba(0,0,0,0.25)] border-t-2 border-slate-700">
+          <tfoot className="sticky bottom-0 z-20 bg-slate-900 text-white font-mono font-bold shadow-md border-t-2 border-slate-700">
             <tr className="bg-slate-900">
-              <td colSpan={2} className="px-3 py-3 border-r border-slate-800 text-left font-sans uppercase tracking-wider text-amber-400 text-xs sticky left-0 z-30 bg-slate-900 shadow-[1px_0_0_0_#334155]">
-                GRAND TOTAL
+              <td colSpan={2} className="px-3 py-3 border-r border-slate-800 text-left font-sans font-bold text-amber-400 text-xs sticky left-0 z-30 bg-slate-900">
+                {t('grandTotal')}
               </td>
               <td className="px-3 py-3 border-r border-slate-800 text-center font-sans text-xs text-slate-300 bg-slate-900">
                 {summary.totalShareIds} IDs
@@ -480,7 +547,7 @@ export const MasterLedgerTable: React.FC<MasterLedgerTableProps> = ({
 
       {/* Delete Share Confirmation Dialog */}
       {shareToDelete && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs">
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-950/75">
           <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-300 p-6 animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center gap-3 mb-3">
               <div className="w-10 h-10 rounded-full bg-rose-100 text-rose-700 flex items-center justify-center shrink-0">
@@ -525,6 +592,14 @@ export const MasterLedgerTable: React.FC<MasterLedgerTableProps> = ({
           </div>
         </div>
       )}
+
+      {/* Due & Late Fee Calculation Breakdown Modal */}
+      <CalculationBreakdownModal
+        isOpen={!!breakdownShare}
+        onClose={() => setBreakdownShare(null)}
+        share={breakdownShare}
+        onOpenPaymentForShare={onOpenPaymentForShare}
+      />
     </div>
   );
 };

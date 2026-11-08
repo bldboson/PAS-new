@@ -3,12 +3,189 @@ import type { MonthKey, ShareRecord, SocietySummary } from '../types.ts';
 
 export const MONTHLY_INSTALLMENT_AMOUNT = 2800;
 export const ADMISSION_FEE_AMOUNT = 5000;
-export const LATE_FEE_PERCENTAGE = 0.10; // 10%
+export const STAGE_2_FINE = 150; // Tk. 150 from 16th to 20th
+export const STAGE_3_PERCENTAGE = 0.15; // 15% surcharge from 21st to month end
+
+export interface PenaltyStageInfo {
+  stage: 1 | 2 | 3;
+  name: string;
+  badge: string;
+  colorClass: string;
+  description: string;
+  nextDeadline: string;
+}
+
+/**
+ * Returns current penalty stage details based on day of the month (1-31)
+ */
+export function getPenaltyStage(day: number = new Date().getDate()): PenaltyStageInfo {
+  const safeDay = Math.max(1, Math.min(31, Math.round(day)));
+  if (safeDay <= 15) {
+    return {
+      stage: 1,
+      name: 'Stage 1: Regular Due (No Fine)',
+      badge: '1–15th: Regular (Tk 2,800)',
+      colorClass: 'emerald',
+      description: 'Monthly installment of Tk. 2,800 applies without penalty fine.',
+      nextDeadline: '15th of the month (before Tk. 150 fine applies)',
+    };
+  }
+  if (safeDay <= 20) {
+    return {
+      stage: 2,
+      name: 'Stage 2: Fixed Fine (+Tk 150)',
+      badge: '16–20th: +Tk 150 Fine',
+      colorClass: 'amber',
+      description: 'Fixed Tk. 150 late fine added to the running due balance.',
+      nextDeadline: '20th of the month (before 15% surcharge applies)',
+    };
+  }
+  return {
+    stage: 3,
+    name: 'Stage 3: Surcharge (+15%)',
+    badge: '21st–End: +15% Surcharge',
+    colorClass: 'rose',
+    description: '15% compound surcharge applied on total running balance.',
+    nextDeadline: 'Month end (balance will carry forward into next month)',
+  };
+}
+
+export interface MonthCompoundingStep {
+  monthIndex: number;
+  monthName?: string;
+  isPastMonth: boolean;
+  openingBalance: number;
+  installment: number;
+  subtotal: number;
+  stage2Fine: number;
+  subtotalAfterStage2: number;
+  stage3Percentage: number;
+  stage3Surcharge: number;
+  closingBalance: number;
+}
+
+export interface CompoundDueDetails {
+  totalDue: number;
+  principalDue: number;
+  penaltyDue: number;
+  dueMonths: number;
+  effectiveDay: number;
+  stage: PenaltyStageInfo;
+  steps: MonthCompoundingStep[];
+}
+
+/**
+ * Computes compound overdue balance across chronological months:
+ * Month 1:
+ *   - Day 1-15: Tk. 2,800
+ *   - Day 16-20: Tk. 2,800 + Tk. 150 = Tk. 2,950
+ *   - Day 21-End: Tk. 2,950 + 15% (Tk. 442.50) = Tk. 3,392.50
+ * Month 2:
+ *   - Day 1-15: Tk. 3,392.50 + Tk. 2,800 = Tk. 6,192.50
+ *   - Day 16-20: Tk. 6,192.50 + Tk. 150 = Tk. 6,342.50
+ *   - Day 21-End: Tk. 6,342.50 + 15% (Tk. 951.375) = Tk. 7,293.875
+ * ... and so on iteratively.
+ */
+export function calculateCompoundDue(
+  dueMonthsCount: number,
+  dayOfMonth: number = new Date().getDate(),
+  monthNames?: string[]
+): CompoundDueDetails {
+  const safeDay = Math.max(1, Math.min(31, Math.round(dayOfMonth)));
+  const stage = getPenaltyStage(safeDay);
+
+  if (dueMonthsCount <= 0) {
+    return {
+      totalDue: 0,
+      principalDue: 0,
+      penaltyDue: 0,
+      dueMonths: 0,
+      effectiveDay: safeDay,
+      stage,
+      steps: [],
+    };
+  }
+
+  const steps: MonthCompoundingStep[] = [];
+  let runningBalance = 0;
+  const principalDue = dueMonthsCount * MONTHLY_INSTALLMENT_AMOUNT;
+
+  for (let i = 1; i <= dueMonthsCount; i++) {
+    const isPastMonth = i < dueMonthsCount;
+    const openingBalance = runningBalance;
+    const installment = MONTHLY_INSTALLMENT_AMOUNT;
+    const subtotal = openingBalance + installment;
+
+    let stage2Fine = 0;
+    let stage3Surcharge = 0;
+
+    if (isPastMonth) {
+      // Past overdue months passed through both 16-20th (+150) and 21-end (+15%)
+      stage2Fine = STAGE_2_FINE; // 150
+      const subtotalAfterStage2 = subtotal + stage2Fine;
+      stage3Surcharge = Math.round(subtotalAfterStage2 * STAGE_3_PERCENTAGE * 1000) / 1000;
+      runningBalance = subtotalAfterStage2 + stage3Surcharge;
+
+      steps.push({
+        monthIndex: i,
+        monthName: monthNames && monthNames[i - 1] ? monthNames[i - 1] : `Overdue Month ${i}`,
+        isPastMonth: true,
+        openingBalance,
+        installment,
+        subtotal,
+        stage2Fine,
+        subtotalAfterStage2,
+        stage3Percentage: 0.15,
+        stage3Surcharge,
+        closingBalance: runningBalance,
+      });
+    } else {
+      // Current active month - fine depends on safeDay
+      if (safeDay >= 16) {
+        stage2Fine = STAGE_2_FINE;
+      }
+      const subtotalAfterStage2 = subtotal + stage2Fine;
+      if (safeDay >= 21) {
+        stage3Surcharge = Math.round(subtotalAfterStage2 * STAGE_3_PERCENTAGE * 1000) / 1000;
+      }
+      runningBalance = subtotalAfterStage2 + stage3Surcharge;
+
+      steps.push({
+        monthIndex: i,
+        monthName: monthNames && monthNames[i - 1] ? monthNames[i - 1] : `Current Month`,
+        isPastMonth: false,
+        openingBalance,
+        installment,
+        subtotal,
+        stage2Fine,
+        subtotalAfterStage2,
+        stage3Percentage: safeDay >= 21 ? 0.15 : 0,
+        stage3Surcharge,
+        closingBalance: runningBalance,
+      });
+    }
+  }
+
+  const penaltyDue = Math.max(0, runningBalance - principalDue);
+
+  return {
+    totalDue: runningBalance,
+    principalDue,
+    penaltyDue,
+    dueMonths: dueMonthsCount,
+    effectiveDay: safeDay,
+    stage,
+    steps,
+  };
+}
 
 /**
  * Calculates deposit, due, and late fee for a single share record
  */
-export function calculateShareRecord(share: ShareRecord): ShareRecord {
+export function calculateShareRecord(
+  share: ShareRecord,
+  dayOfMonth: number = new Date().getDate()
+): ShareRecord {
   if (share.isClosed) {
     return {
       ...share,
@@ -23,7 +200,7 @@ export function calculateShareRecord(share: ShareRecord): ShareRecord {
 
   let totalMonthlyPaid = 0;
   let dueMonths = 0;
-  let dueAmount = 0;
+  const dueMonthKeys: string[] = [];
 
   // Evaluate across all months configured on the share record
   const monthKeys = Object.keys(share.months || {});
@@ -34,16 +211,17 @@ export function calculateShareRecord(share: ShareRecord): ShareRecord {
         totalMonthlyPaid += payment.amount || 0;
       } else if (payment.status === 'due') {
         dueMonths += 1;
-        dueAmount += payment.amount || MONTHLY_INSTALLMENT_AMOUNT;
+        dueMonthKeys.push(m);
       }
     }
   }
 
+  const compound = calculateCompoundDue(dueMonths, dayOfMonth, dueMonthKeys);
   const lateFeePaid = share.lateFeePaid || 0;
-  // Late fee: 10% of monthly installment (৳280) if there is any due installment
-  const lateFee = dueMonths > 0 ? Math.round(MONTHLY_INSTALLMENT_AMOUNT * LATE_FEE_PERCENTAGE) : 0;
+  const lateFee = Math.max(0, compound.penaltyDue);
+  const dueAmount = compound.principalDue;
   const totalDeposit = share.admissionFee + totalMonthlyPaid + lateFeePaid;
-  const totalDue = Math.max(0, dueAmount + lateFee - lateFeePaid);
+  const totalDue = Math.max(0, compound.totalDue - lateFeePaid);
 
   return {
     ...share,
@@ -59,7 +237,10 @@ export function calculateShareRecord(share: ShareRecord): ShareRecord {
 /**
  * Summarizes the entire society dataset matching the Excel dashboard
  */
-export function calculateSocietySummary(shares: ShareRecord[]): SocietySummary {
+export function calculateSocietySummary(
+  shares: ShareRecord[],
+  dayOfMonth: number = new Date().getDate()
+): SocietySummary {
   let totalActiveShares = 0;
   let totalShareIds = 0;
   let totalAdmissionCollected = 0;
@@ -70,11 +251,10 @@ export function calculateSocietySummary(shares: ShareRecord[]): SocietySummary {
   let totalLateFeeDue = 0;
 
   const monthStats: SocietySummary['monthStats'] = {};
-
   const uniqueMemberNames = new Set<string>();
 
   for (const rawShare of shares) {
-    const share = calculateShareRecord(rawShare);
+    const share = calculateShareRecord(rawShare, dayOfMonth);
 
     // Count IDs
     if (share.id.includes(',')) {
@@ -151,9 +331,16 @@ export function calculateSocietySummary(shares: ShareRecord[]): SocietySummary {
 /**
  * Format currency in Bangladeshi Taka (৳)
  */
-export function formatTaka(amount: number): string {
+export function formatTaka(amount: number, showDecimalsIfAny: boolean = true): string {
   if (amount === undefined || amount === null || isNaN(amount)) return 'Tk. 0';
-  return 'Tk. ' + amount.toLocaleString('en-IN');
+  const hasDecimals = amount % 1 !== 0;
+  if (hasDecimals && showDecimalsIfAny) {
+    return 'Tk. ' + Number(amount.toFixed(2)).toLocaleString('en-IN', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  }
+  return 'Tk. ' + Math.round(amount).toLocaleString('en-IN');
 }
 
 /**
@@ -184,8 +371,9 @@ export function takaInWords(amount: number): string {
     return out;
   }
 
-  let crore = Math.floor(amount / 10000000);
-  let remainder = amount % 10000000;
+  const rounded = Math.round(amount);
+  let crore = Math.floor(rounded / 10000000);
+  let remainder = rounded % 10000000;
   let lakh = Math.floor(remainder / 100000);
   remainder %= 100000;
   let thousand = Math.floor(remainder / 1000);

@@ -1,5 +1,7 @@
-import { Plus, Download, Printer, RotateCcw, CreditCard, FileSpreadsheet, RefreshCw, Lock, LogOut, ShieldCheck } from 'lucide-react';
+import { Plus, Download, Printer, RotateCcw, CreditCard, FileSpreadsheet, RefreshCw, Lock, LogOut, ShieldCheck, Languages, Palette, Sun, Moon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
+import { useTheme } from '../context/ThemeContext';
 
 interface NavbarProps {
   onOpenRecordPayment: () => void;
@@ -25,13 +27,16 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenSyncModal,
 }) => {
   const { isAdmin, logout, openLoginModal } = useAuth();
+  const { language, setLanguage, t } = useLanguage();
+  const { theme, setTheme } = useTheme();
+
   return (
-    <header className="bg-slate-900 border-b border-slate-800 text-white sticky top-0 z-30 shadow-md">
-      <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-10 py-3.5">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <header className="bg-slate-900/95 backdrop-blur-md border-b border-slate-800 text-white sticky top-0 z-30 shadow-lg shadow-slate-950/20">
+      <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-10 py-3">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 sm:gap-4">
           {/* Logo & Society Title */}
-          <div className="flex items-center space-x-3.5">
-            <div className="w-12 h-12 rounded-xl bg-white p-1 flex items-center justify-center shadow-lg shadow-emerald-950/40 ring-2 ring-emerald-500/40 overflow-hidden shrink-0">
+          <div className="flex items-center space-x-3">
+            <div className="w-11 h-11 rounded-xl bg-white p-1 flex items-center justify-center shadow-md shadow-emerald-950/50 ring-2 ring-emerald-500/30 overflow-hidden shrink-0">
               <img
                 src="/logo.png"
                 alt="Progressive Association Society Logo"
@@ -40,28 +45,99 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="font-bold text-lg sm:text-xl tracking-tight text-white">
-                  PROGRESSIVE ASSOCIATION SOCIETY
+                <h1 className="font-bold text-base sm:text-lg tracking-tight text-white">
+                  {t('societyName')}
                 </h1>
-                <span className="px-2 py-0.5 text-xs font-semibold uppercase bg-emerald-500/20 text-emerald-300 rounded-full border border-emerald-500/30">
-                  Fund Portal
+                <span className="px-2 py-0.5 text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 rounded-full border border-emerald-500/30">
+                  {t('fundPortal')}
                 </span>
               </div>
-              <p className="text-xs sm:text-sm text-slate-400 font-medium">
-                MEMBER PAYMENT &amp; INSTALLMENT DASHBOARD (FY 2026-27)
+              <p className="text-[11px] sm:text-xs text-slate-400 font-medium tracking-wide">
+                {t('portalSubtitle')}
               </p>
             </div>
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center flex-wrap gap-2 sm:gap-2.5">
+          <div className="flex items-center flex-wrap gap-2">
+            {/* Fast Language Toggle (EN | বাংলা) */}
+            <div className="flex items-center bg-slate-800/90 p-0.5 rounded-xl border border-slate-700/80 shadow-2xs">
+              <button
+                type="button"
+                onClick={() => setLanguage('en')}
+                className={`px-2 py-1 rounded-lg text-xs font-bold transition-colors duration-150 cursor-pointer ${
+                  language === 'en'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+                title="Switch to English"
+              >
+                EN
+              </button>
+              <button
+                type="button"
+                onClick={() => setLanguage('bn')}
+                className={`px-2 py-1 rounded-lg text-xs font-bold transition-colors duration-150 cursor-pointer ${
+                  language === 'bn'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+                title="বাংলা ভাষায় পরিবর্তন করুন"
+              >
+                বাংলা
+              </button>
+            </div>
+
+            {/* 3-Theme Switcher (Classic | White | Dark) */}
+            <div className="flex items-center bg-slate-800/90 p-0.5 rounded-xl border border-slate-700/80 shadow-2xs">
+              <button
+                type="button"
+                onClick={() => setTheme('classic')}
+                className={`px-2 py-1 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors duration-150 cursor-pointer ${
+                  theme === 'classic'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+                title={language === 'bn' ? 'মূল ক্ল্যাসিক থিম' : 'Classic Slate Theme'}
+              >
+                <Palette className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">{language === 'bn' ? 'ক্ল্যাসিক' : 'Classic'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setTheme('forest-light')}
+                className={`px-2 py-1 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors duration-150 cursor-pointer ${
+                  theme === 'forest-light'
+                    ? 'bg-amber-600 text-white shadow-xs'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+                title={language === 'bn' ? 'হোয়াইট ফরেস্ট থিম' : 'White Forest Theme'}
+              >
+                <Sun className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">{language === 'bn' ? 'হোয়াইট' : 'White'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setTheme('forest-dark')}
+                className={`px-2 py-1 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors duration-150 cursor-pointer ${
+                  theme === 'forest-dark'
+                    ? 'bg-teal-600 text-white shadow-xs'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+                title={language === 'bn' ? 'ডার্ক ফরেস্ট থিম' : 'Dark Forest Theme'}
+              >
+                <Moon className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">{language === 'bn' ? 'ডার্ক' : 'Dark'}</span>
+              </button>
+            </div>
+
             {/* Google Sheet Sync Button */}
             <button
               onClick={onOpenSyncModal}
-              className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors duration-150 cursor-pointer ${
                 isSheetConnected
                   ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-500/50 hover:bg-emerald-900/60 shadow-xs'
-                  : 'bg-emerald-600/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-600/30'
+                  : 'bg-emerald-600/15 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-600/25'
               }`}
               title={
                 isSheetConnected
@@ -70,85 +146,83 @@ export const Navbar: React.FC<NavbarProps> = ({
               }
             >
               {isSyncing ? (
-                <RefreshCw className="w-4 h-4 text-emerald-400 animate-spin" />
+                <RefreshCw className="w-3.5 h-3.5 text-emerald-400 animate-spin" />
               ) : (
-                <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+                <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
               )}
-              <span>{isSheetConnected ? 'Sheet Synced' : 'Sync Google Sheet'}</span>
+              <span>{isSheetConnected ? t('sheetSynced') : t('syncSheet')}</span>
               {isSheetConnected && (
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse ml-0.5" />
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse motion-reduce:animate-none ml-0.5" />
               )}
             </button>
 
             <button
               onClick={onOpenRecordPayment}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs sm:text-sm font-semibold shadow-sm transition-all hover:shadow-emerald-600/30 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none text-white text-xs sm:text-sm font-bold shadow-md shadow-emerald-950/30 transition-colors duration-150 cursor-pointer"
               title="Record member installment or admission fee"
             >
-              <CreditCard className="w-4 h-4" />
-              <span>Record Payment</span>
+              <CreditCard className="w-3.5 h-3.5" />
+              <span>{t('recordPayment')}</span>
             </button>
 
             <button
               onClick={onOpenAddShare}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs sm:text-sm font-medium border border-slate-700 transition-all hover:text-white cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700/80 transition-colors duration-150 hover:text-white cursor-pointer"
               title="Add a new share or member"
             >
-              <Plus className="w-4 h-4 text-emerald-400" />
-              <span>Add Share</span>
+              <Plus className="w-3.5 h-3.5 text-emerald-400" />
+              <span>{t('addShare')}</span>
             </button>
 
             <button
               onClick={onExportCSV}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs sm:text-sm font-medium border border-slate-700 transition-all hover:text-white cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium border border-slate-700/80 transition-colors duration-150 hover:text-white cursor-pointer"
               title="Export current ledger to CSV / Excel spreadsheet"
             >
-              <Download className="w-4 h-4 text-blue-400" />
-              <span className="hidden sm:inline">Export</span> CSV
+              <Download className="w-3.5 h-3.5 text-blue-400" />
+              <span className="hidden sm:inline">{t('export')}</span>
             </button>
 
             <button
               onClick={onPrint}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs sm:text-sm font-medium border border-slate-700 transition-all hover:text-white cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium border border-slate-700/80 transition-colors duration-150 hover:text-white cursor-pointer"
               title="Print dashboard summary and ledger report"
             >
-              <Printer className="w-4 h-4 text-amber-400" />
-              <span className="hidden sm:inline">Print</span>
+              <Printer className="w-3.5 h-3.5 text-amber-400" />
+              <span className="hidden sm:inline">{t('print')}</span>
             </button>
 
             <button
               onClick={onResetData}
-              className="inline-flex items-center gap-1.5 px-2.5 py-2 rounded-lg bg-slate-800 hover:bg-rose-900/40 text-slate-400 hover:text-rose-300 text-xs sm:text-sm font-medium border border-slate-700 hover:border-rose-800/60 transition-all cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-2 py-1.5 rounded-xl bg-slate-800/80 hover:bg-rose-950/40 text-slate-400 hover:text-rose-300 text-xs font-medium border border-slate-700/80 hover:border-rose-800/60 transition-colors duration-150 cursor-pointer"
               title="Reset data back to original Excel sheet state"
             >
-              <RotateCcw className="w-4 h-4" />
-              <span className="hidden md:inline">Reset</span>
+              <RotateCcw className="w-3.5 h-3.5" />
             </button>
 
             {/* Admin Login / Logout Indicator */}
             {isAdmin ? (
-              <div className="flex items-center gap-1 bg-emerald-950/80 border border-emerald-500/40 rounded-lg p-0.5">
-                <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold text-emerald-300">
+              <div className="flex items-center gap-1 bg-emerald-950/80 border border-emerald-500/40 rounded-xl p-0.5">
+                <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-bold text-emerald-300">
                   <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Admin</span>
+                  <span>{t('admin')}</span>
                 </span>
                 <button
                   onClick={logout}
-                  className="inline-flex items-center gap-1 px-2 py-1 rounded bg-slate-800 hover:bg-rose-900/60 text-slate-300 hover:text-rose-200 text-xs font-medium transition-colors cursor-pointer"
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-800 hover:bg-rose-900/60 text-slate-300 hover:text-rose-200 text-xs font-medium transition-colors duration-150 cursor-pointer"
                   title="Logout from Admin Mode"
                 >
                   <LogOut className="w-3 h-3" />
-                  <span className="hidden sm:inline">Logout</span>
                 </button>
               </div>
             ) : (
               <button
                 onClick={() => openLoginModal()}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs sm:text-sm font-semibold transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-bold transition-colors duration-150 cursor-pointer"
                 title="Log in with admin credentials to edit, delete, sync, add share, or print"
               >
                 <Lock className="w-3.5 h-3.5 text-amber-400" />
-                <span>Admin Login</span>
+                <span>{t('adminLogin')}</span>
               </button>
             )}
           </div>

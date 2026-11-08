@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ShareRecord, MonthKey, ALL_MONTHS } from '../types';
 import { formatTaka } from '../utils/calculations';
+import { CalculationBreakdownModal } from './CalculationBreakdownModal';
 import {
   X,
   User,
@@ -18,6 +19,7 @@ import {
   Save,
   CheckCircle2,
   Clock,
+  Calculator,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -72,7 +74,10 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
   const totalAdmission = memberShares.reduce((sum, s) => sum + (s?.admissionFee || 0), 0);
   const totalDeposited = memberShares.reduce((sum, s) => sum + (s?.totalDeposit || 0), 0);
   const totalDue = memberShares.reduce((sum, s) => sum + (s?.totalDue || 0), 0);
+  const totalPrincipalDue = memberShares.reduce((sum, s) => sum + (s?.dueAmount || 0), 0);
+  const totalLateFee = memberShares.reduce((sum, s) => sum + (s?.lateFee || 0), 0);
   const totalDueMonths = memberShares.reduce((sum, s) => sum + (s?.dueMonths || 0), 0);
+  const [showBreakdownModal, setShowBreakdownModal] = useState<boolean>(false);
 
   // Derive KYC info with realistic defaults
   const phone = memberShares.find((s) => s?.phone)?.phone || '+880 1711-000000';
@@ -144,7 +149,7 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
       onClick={(e) => {
         if (e.target === e.currentTarget && !shareToDelete) onClose();
       }}
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-900/70 backdrop-blur-xs overflow-y-auto print:static print:p-0 print:bg-white print:overflow-visible print:block print-modal"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/75 overflow-y-auto print:static print:p-0 print:bg-white print:overflow-visible print:block print-modal"
     >
       <div className="relative w-full max-w-4xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-6 print:m-0 print:border-none print:shadow-none print:max-w-none print:w-full print:block">
         
@@ -155,7 +160,7 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
               <img src="/logo.png" alt="PAS Logo" className="w-full h-full object-contain" />
             </div>
             <div>
-              <span className="text-xs uppercase tracking-wider font-bold text-emerald-400">
+              <span className="text-xs font-semibold text-emerald-400">
                 Member Portfolio
               </span>
             </div>
@@ -206,7 +211,7 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
                   <img src="/logo.png" alt="Progressive Association Society" className="w-full h-full object-contain" />
                 </div>
                 <div>
-                  <h1 className="text-lg sm:text-xl font-extrabold tracking-tight text-slate-950 uppercase">
+                  <h1 className="text-lg sm:text-xl font-extrabold tracking-tight text-slate-950">
                     PROGRESSIVE ASSOCIATION SOCIETY
                   </h1>
                   <p className="text-xs text-slate-500">
@@ -216,8 +221,8 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
               </div>
 
               <div className="text-center sm:text-right shrink-0">
-                <span className="inline-block px-3 py-1 bg-slate-900 text-white font-bold text-xs uppercase tracking-wider rounded">
-                  MEMBER CARD
+                <span className="inline-block px-3 py-1 bg-slate-900 text-white font-bold text-xs rounded">
+                  Member Card
                 </span>
                 <p className="text-[11px] font-mono text-slate-400 mt-1">
                   Date: {new Date().toLocaleDateString('en-GB')}
@@ -233,13 +238,13 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
                 <div className="flex items-center justify-between border-b border-slate-200 pb-2">
                   <div className="flex items-center gap-2">
                     <User className="w-4 h-4 text-emerald-600" />
-                    <h3 className="font-bold text-xs text-slate-900 uppercase">Edit KYC Information</h3>
+                    <h3 className="font-bold text-xs text-slate-900">Edit KYC Information</h3>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
+                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">
                       Full Legal Name
                     </label>
                     <input
@@ -252,7 +257,7 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
+                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">
                       Phone Number
                     </label>
                     <input
@@ -265,7 +270,7 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
+                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">
                       National ID (NID)
                     </label>
                     <input
@@ -278,7 +283,7 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">
+                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">
                       Address
                     </label>
                     <input
@@ -353,7 +358,7 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
                 {/* KYC Metadata Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5 text-xs">
                   <div className="bg-white p-2.5 rounded-lg border border-slate-200">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5 flex items-center gap-1">
+                    <span className="text-[10px] font-semibold text-slate-500 block mb-0.5 flex items-center gap-1">
                       <Phone className="w-3 h-3 text-slate-400" />
                       Phone
                     </span>
@@ -361,7 +366,7 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
                   </div>
 
                   <div className="bg-white p-2.5 rounded-lg border border-slate-200">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5 flex items-center gap-1">
+                    <span className="text-[10px] font-semibold text-slate-500 block mb-0.5 flex items-center gap-1">
                       <FileText className="w-3 h-3 text-slate-400" />
                       NID
                     </span>
@@ -369,7 +374,7 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
                   </div>
 
                   <div className="bg-white p-2.5 rounded-lg border border-slate-200 md:col-span-2">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5 flex items-center gap-1">
+                    <span className="text-[10px] font-semibold text-slate-500 block mb-0.5 flex items-center gap-1">
                       <MapPin className="w-3 h-3 text-slate-400" />
                       Address
                     </span>
@@ -385,7 +390,7 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
           {/* KPI Summary Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
             <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
-              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+              <span className="text-[11px] font-semibold text-slate-500 block">
                 Admission Fee
               </span>
               <span className="text-xl font-extrabold text-slate-900 font-mono mt-1 block">
@@ -394,7 +399,7 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
             </div>
 
             <div className="p-3.5 bg-emerald-50 rounded-xl border border-emerald-200">
-              <span className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider block">
+              <span className="text-[11px] font-semibold text-emerald-800 block">
                 Total Deposited
               </span>
               <span className="text-xl font-extrabold text-emerald-700 font-mono mt-1 block">
@@ -403,29 +408,47 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
             </div>
 
             <div
-              className={`p-3.5 rounded-xl border ${
+              className={`p-3.5 rounded-xl border flex flex-col justify-between ${
                 totalDue > 0
                   ? 'bg-rose-50 border-rose-200 text-rose-900'
                   : 'bg-slate-50 border-slate-200 text-slate-900'
               }`}
             >
-              <span className="text-[11px] font-bold uppercase tracking-wider block opacity-80">
-                Balance Due
-              </span>
-              <span
-                className={`text-xl font-extrabold font-mono mt-1 block ${
-                  totalDue > 0 ? 'text-rose-700' : 'text-slate-700'
-                }`}
-              >
-                {formatTaka(totalDue)}
-              </span>
+              <div>
+                <span className="text-[11px] font-semibold block opacity-80">
+                  Balance Due
+                </span>
+                <span
+                  className={`text-xl font-extrabold font-mono mt-1 block ${
+                    totalDue > 0 ? 'text-rose-700' : 'text-slate-700'
+                  }`}
+                >
+                  {formatTaka(totalDue)}
+                </span>
+                {totalDue > 0 && (
+                  <span className="text-[10px] text-slate-600 block mt-0.5">
+                    Principal: {formatTaka(totalPrincipalDue)} + Fee: +{formatTaka(totalLateFee)}
+                  </span>
+                )}
+              </div>
+
+              {totalDue > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowBreakdownModal(true)}
+                  className="mt-2 py-1 px-2 rounded-md bg-white hover:bg-rose-100 border border-rose-300 text-rose-800 text-[11px] font-bold inline-flex items-center justify-center gap-1 shadow-2xs transition-colors cursor-pointer"
+                >
+                  <Calculator className="w-3.5 h-3.5 text-rose-600" />
+                  <span>View Calculation Breakdown</span>
+                </button>
+              )}
             </div>
           </div>
 
           {/* Section: Vertical Installment Schedule */}
           <div className="mb-5">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2.5">
-              <h3 className="font-bold text-sm text-slate-950 uppercase tracking-tight flex items-center gap-1.5">
+              <h3 className="font-bold text-sm text-slate-950 tracking-tight flex items-center gap-1.5">
                 <Calendar className="w-4 h-4 text-emerald-600" />
                 Installments
               </h3>
@@ -436,7 +459,7 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setActiveShareFilter('all')}
-                    className={`px-2 py-0.5 rounded text-xs font-bold transition-all cursor-pointer ${
+                    className={`px-2 py-0.5 rounded text-xs font-bold transition-colors duration-150 cursor-pointer ${
                       activeShareFilter === 'all'
                         ? 'bg-white text-slate-900 shadow-2xs'
                         : 'text-slate-600 hover:text-slate-900'
@@ -449,7 +472,7 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
                       key={s.id}
                       type="button"
                       onClick={() => setActiveShareFilter(s.id)}
-                      className={`px-2 py-0.5 rounded text-xs font-bold transition-all cursor-pointer ${
+                      className={`px-2 py-0.5 rounded text-xs font-bold transition-colors duration-150 cursor-pointer ${
                         activeShareFilter === s.id
                           ? 'bg-emerald-600 text-white shadow-2xs'
                           : 'text-slate-600 hover:text-slate-900'
@@ -465,7 +488,7 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
             {/* Vertical Installment Ledger Table (WITHOUT Target Amount column) */}
             <div className="border border-slate-200 rounded-xl overflow-hidden">
               <table className="w-full text-left text-xs border-collapse">
-                <thead className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200 uppercase text-[11px] tracking-wider">
+                <thead className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200 text-[11px]">
                   <tr>
                     <th className="px-3.5 py-2.5">Month</th>
                     <th className="px-3.5 py-2.5">Share ID</th>
@@ -542,7 +565,7 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
                                 Overdue
                               </span>
                             ) : (
-                              <span className="text-slate-400 text-xs">—</span>
+                              <span className="text-slate-400 text-xs">&bull;</span>
                             )}
                           </td>
 
@@ -585,7 +608,7 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
                 {/* Vertical Schedule Total Footer */}
                 <tfoot className="bg-slate-100 border-t-2 border-slate-200 font-mono text-xs font-bold text-slate-900">
                   <tr>
-                    <td colSpan={2} className="px-3.5 py-2.5 font-sans uppercase">
+                    <td colSpan={2} className="px-3.5 py-2.5 font-sans font-bold">
                       Total ({displayedShares.length} Share{displayedShares.length > 1 ? 's' : ''})
                     </td>
                     <td colSpan={3} className="px-3.5 py-2.5 text-slate-500 font-sans text-right font-medium">
@@ -636,8 +659,8 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
 
       {/* Delete Share Confirmation Dialog */}
       {shareToDelete && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs">
-          <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-300 p-6 animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-950/75">
+          <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-300 p-6 motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-95 duration-150">
             <div className="flex items-center gap-3 mb-3">
               <div className="w-10 h-10 rounded-full bg-rose-100 text-rose-700 flex items-center justify-center shrink-0">
                 <Trash2 className="w-5 h-5" />
@@ -678,6 +701,14 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
           </div>
         </div>
       )}
+
+      {/* Due & Late Fee Calculation Breakdown Modal */}
+      <CalculationBreakdownModal
+        isOpen={showBreakdownModal}
+        onClose={() => setShowBreakdownModal(false)}
+        share={memberShares.find((s) => s.dueMonths > 0) || memberShares[0] || null}
+        onOpenPaymentForShare={onOpenPaymentForShare}
+      />
     </div>
   );
 };

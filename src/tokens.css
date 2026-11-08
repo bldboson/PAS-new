@@ -1,0 +1,153 @@
+/* Hallmark · built: the project · redesign: polish · stamp: v2.0.0 */
+
+:root,
+html[data-theme="classic"],
+.theme-classic {
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  --popover: #ffffff;
+  --popover-foreground: #0f172a;
+  --primary: #059669;
+  --primary-foreground: #ffffff;
+  --secondary: #0284c7;
+  --secondary-foreground: #ffffff;
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+  --accent: #ecfdf5;
+  --accent-foreground: #065f46;
+  --destructive: #e11d48;
+  --destructive-foreground: #ffffff;
+  --border: #e2e8f0;
+  --input: #e2e8f0;
+  --ring: #10b981;
+  --chart-1: #059669;
+  --chart-2: #0284c7;
+  --chart-3: #0f172a;
+  --chart-4: #10b981;
+  --chart-5: #f59e0b;
+  --sidebar: #0f172a;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #059669;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #1e293b;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #334155;
+  --sidebar-ring: #10b981;
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-serif: Georgia, serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --radius: 0.75rem;
+  --shadow-color: #0f172a;
+  --shadow-2xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+  --spacing: 0.25rem;
+}
+
+html[data-theme="forest-light"],
+.theme-forest-light {
+  --background: #f7f6f2;
+  --foreground: #0f1f1d;
+  --card: #ffffff;
+  --card-foreground: #0f1f1d;
+  --popover: #ffffff;
+  --popover-foreground: #0f1f1d;
+  --primary: #0b3b36;
+  --primary-foreground: #ffffff;
+  --secondary: #d4a24c;
+  --secondary-foreground: #3d2b0e;
+  --muted: #efede6;
+  --muted-foreground: #5c6663;
+  --accent: #e0ebe9;
+  --accent-foreground: #0b3b36;
+  --destructive: #b83432;
+  --destructive-foreground: #ffffff;
+  --border: #dadcd5;
+  --input: #dadcd5;
+  --ring: #14807a;
+  --chart-1: #14807a;
+  --chart-2: #d4a24c;
+  --chart-3: #0b3b36;
+  --chart-4: #5dbfb5;
+  --chart-5: #b88a40;
+  --sidebar: #f1efe8;
+  --sidebar-foreground: #0f1f1d;
+  --sidebar-primary: #0b3b36;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e0ebe9;
+  --sidebar-accent-foreground: #0b3b36;
+  --sidebar-border: #dadcd5;
+  --sidebar-ring: #14807a;
+  --font-sans: Geist, ui-sans-serif, system-ui, sans-serif;
+  --font-serif: 'Instrument Serif', ui-serif, Georgia, serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --radius: 0.625rem;
+  --shadow-color: #0f1f1d;
+  --shadow-2xs: 0px 1px 4px -1px hsl(172.5 34.7% 9% / 0.03);
+  --shadow-xs: 0px 1px 4px -1px hsl(172.5 34.7% 9% / 0.03);
+  --shadow-sm: 0px 1px 4px -1px hsl(172.5 34.7% 9% / 0.06), 0px 1px 2px -2px hsl(172.5 34.7% 9% / 0.06);
+  --shadow: 0px 1px 4px -1px hsl(172.5 34.7% 9% / 0.06), 0px 1px 2px -2px hsl(172.5 34.7% 9% / 0.06);
+  --shadow-md: 0px 1px 4px -1px hsl(172.5 34.7% 9% / 0.06), 0px 2px 4px -2px hsl(172.5 34.7% 9% / 0.06);
+  --shadow-lg: 0px 1px 4px -1px hsl(172.5 34.7% 9% / 0.06), 0px 4px 6px -2px hsl(172.5 34.7% 9% / 0.06);
+  --shadow-xl: 0px 1px 4px -1px hsl(172.5 34.7% 9% / 0.06), 0px 8px 10px -2px hsl(172.5 34.7% 9% / 0.06);
+  --shadow-2xl: 0px 1px 4px -1px hsl(172.5 34.7% 9% / 0.15);
+  --spacing: 0.25rem;
+}
+
+.dark,
+html[data-theme="forest-dark"],
+.theme-forest-dark {
+  --background: #0a1614;
+  --foreground: #e8edeb;
+  --card: #0f1f1d;
+  --card-foreground: #e8edeb;
+  --popover: #142624;
+  --popover-foreground: #e8edeb;
+  --primary: #5dbfb5;
+  --primary-foreground: #0a1614;
+  --secondary: #e0b976;
+  --secondary-foreground: #2a1c08;
+  --muted: #1a2826;
+  --muted-foreground: #8a9693;
+  --accent: #1a2826;
+  --accent-foreground: #9fe5dc;
+  --destructive: #e46e6c;
+  --destructive-foreground: #160807;
+  --border: #263533;
+  --input: #263533;
+  --ring: #5dbfb5;
+  --chart-1: #5dbfb5;
+  --chart-2: #e0b976;
+  --chart-3: #85d5cd;
+  --chart-4: #4ac382;
+  --chart-5: #d4a24c;
+  --sidebar: #081211;
+  --sidebar-foreground: #e8edeb;
+  --sidebar-primary: #5dbfb5;
+  --sidebar-primary-foreground: #0a1614;
+  --sidebar-accent: #1a2826;
+  --sidebar-accent-foreground: #9fe5dc;
+  --sidebar-border: #1a2826;
+  --sidebar-ring: #5dbfb5;
+  --font-sans: Geist, ui-sans-serif, system-ui, sans-serif;
+  --font-serif: 'Instrument Serif', ui-serif, Georgia, serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --radius: 0.625rem;
+  --shadow-color: #000000;
+  --shadow-2xs: 0px 1px 3px 0px hsl(0 0% 0% / 0.15);
+  --shadow-xs: 0px 1px 3px 0px hsl(0 0% 0% / 0.15);
+  --shadow-sm: 0px 1px 3px 0px hsl(0 0% 0% / 0.30), 0px 1px 2px -1px hsl(0 0% 0% / 0.30);
+  --shadow: 0px 1px 3px 0px hsl(0 0% 0% / 0.30), 0px 1px 2px -1px hsl(0 0% 0% / 0.30);
+  --shadow-md: 0px 1px 3px 0px hsl(0 0% 0% / 0.30), 0px 2px 4px -1px hsl(0 0% 0% / 0.30);
+  --shadow-lg: 0px 1px 3px 0px hsl(0 0% 0% / 0.30), 0px 4px 6px -1px hsl(0 0% 0% / 0.30);
+  --shadow-xl: 0px 1px 3px 0px hsl(0 0% 0% / 0.30), 0px 8px 10px -1px hsl(0 0% 0% / 0.30);
+  --shadow-2xl: 0px 1px 3px 0px hsl(0 0% 0% / 0.75);
+}
+

@@ -9,14 +9,17 @@ import { MemberCardsView } from './components/MemberCardsView';
 import { MonthReconciliationView } from './components/MonthReconciliationView';
 import { OverdueRemindersView } from './components/OverdueRemindersView';
 import { MembersDirectoryView } from './components/MembersDirectoryView';
+import { LandDocumentsView } from './components/LandDocumentsView';
 import { MoneyReceiptModal } from './components/MoneyReceiptModal';
 import { RecordPaymentModal } from './components/RecordPaymentModal';
 import { AddMemberModal } from './components/AddMemberModal';
+import { CurrentMonthFloatingTracker } from './components/CurrentMonthFloatingTracker';
 import { MemberDetailModal } from './components/MemberDetailModal';
 import { GoogleSheetSyncModal } from './components/GoogleSheetSyncModal';
 import { AdminLoginModal } from './components/AdminLoginModal';
 import { MonthSettingsModal } from './components/MonthSettingsModal';
 import { useAuth } from './context/AuthContext';
+import { useLanguage } from './context/LanguageContext';
 import { initAuth, googleSignIn, getAccessToken, logout } from './services/googleAuth';
 import {
   SheetMetadata,
@@ -38,6 +41,8 @@ import {
   CheckCircle2,
   FileSpreadsheet,
   Contact,
+  Scale,
+  Landmark,
   X,
 } from 'lucide-react';
 
@@ -46,6 +51,7 @@ const SHEET_ID_KEY = 'pas_google_sheet_id_v1';
 const AUTO_SYNC_KEY = 'pas_google_sheet_autosync_v1';
 
 export default function App() {
+  const { t, language } = useLanguage();
   const [shares, setShares] = useState<ShareRecord[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -59,7 +65,7 @@ export default function App() {
     return INITIAL_SHARES;
   });
 
-  const [activeTab, setActiveTab] = useState<'ledger' | 'cards' | 'months' | 'defaulters' | 'members'>('ledger');
+  const [activeTab, setActiveTab] = useState<'ledger' | 'cards' | 'months' | 'defaulters' | 'members' | 'deeds'>('ledger');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'overdue' | 'paid' | 'closed'>('all');
 
@@ -385,45 +391,62 @@ export default function App() {
   const handleSavePayment = ({
     shareId,
     month,
+    months,
     amount,
+    lateFeeAmount,
     date,
     paymentMethod,
     includeLateFee,
     notes,
   }: {
     shareId: string;
-    month: MonthKey;
+    month?: MonthKey;
+    months?: MonthKey[];
     amount: number;
+    lateFeeAmount?: number;
     date: string;
     paymentMethod: string;
     includeLateFee: boolean;
     notes?: string;
   }) => {
+    const targetMonths: MonthKey[] = months && months.length > 0
+      ? months
+      : month
+      ? [month]
+      : ['Oct-26'];
+
     const updated = shares.map((s) => {
       if (s.id !== shareId) return s;
 
-      const updatedMonths = {
-        ...s.months,
-        [month]: {
+      const updatedMonths = { ...s.months };
+
+      for (const m of targetMonths) {
+        updatedMonths[m] = {
           status: 'paid' as const,
           date,
-          amount,
+          amount: 2800,
           paymentMethod,
           notes,
-        },
-      };
+        };
+      }
+
+      const lateFeeToAdd = includeLateFee
+        ? (lateFeeAmount !== undefined ? lateFeeAmount : s.lateFee)
+        : 0;
 
       const updatedShare: ShareRecord = {
         ...s,
         months: updatedMonths,
-        lateFeePaid: includeLateFee ? s.lateFeePaid + 280 : s.lateFeePaid,
+        lateFeePaid: s.lateFeePaid + lateFeeToAdd,
       };
 
       return calculateShareRecord(updatedShare);
     });
 
     setShares(updated);
-    showToast(`Payment of Tk. ${amount.toLocaleString('en-IN')} recorded for ${shareId} (${month})!`);
+    showToast(
+      `Payment of Tk. ${amount.toLocaleString('en-IN')} recorded for ${shareId} (${targetMonths.join(', ')})!`
+    );
     triggerAutoSyncIfEnabled(updated);
   };
 
@@ -660,7 +683,7 @@ export default function App() {
     csv += 'MEMBER PAYMENT & INSTALLMENT DASHBOARD\n';
     csv += `TOTAL ACTIVE SHARES,"${summary.totalActiveShares} Shares",,,,TOTAL BANK DEPOSIT,"৳${summary.totalBankDeposit.toLocaleString('en-IN')}",,,,TOTAL OUTSTANDING DUE,"৳${summary.totalOutstandingDue.toLocaleString('en-IN')}",,,,COLLECTION EFFICIENCY,"${summary.collectionEfficiency}%"\n`;
     csv += `30 Active Members (32 IDs),,,,"Admission: ৳${summary.totalAdmissionCollected.toLocaleString('en-IN')} | Monthly: ৳${summary.totalMonthlyCollected.toLocaleString('en-IN')} | Late Fee: ৳${summary.totalLateFeeCollected.toLocaleString('en-IN')}",,,,"Due: ৳${summary.totalDuePrincipal.toLocaleString('en-IN')} + Late Fee: ৳${summary.totalLateFeeDue.toLocaleString('en-IN')}"\n`;
-    csv += 'SL,Member Name,Share ID, Admission Fee ,Month of Aug-26,,Month of Sep-26,,Month of Oct-26,,Month of Nov-26,,Month of Dec-26,, Total Deposit ,Due Months,Due Amount,Late Fee (10%),Total Due,Late Fee Paid\n';
+    csv += 'SL,Member Name,Share ID, Admission Fee ,Month of Aug-26,,Month of Sep-26,,Month of Oct-26,,Month of Nov-26,,Month of Dec-26,, Total Deposit ,Due Months,Due Amount,Late Fee / Fine,Total Due,Late Fee Paid\n';
     csv += ',,,,Date, Amount ,Date, Amount ,Date, Amount ,Date, Amount ,Date, Amount ,,,,,,\n';
 
     for (const s of shares) {
@@ -728,7 +751,7 @@ export default function App() {
     <div className="min-h-screen bg-slate-100/70 text-slate-900 font-sans antialiased selection:bg-emerald-500 selection:text-white">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-5 right-5 z-50 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-xl flex items-center gap-2.5 border border-slate-700 animate-in fade-in slide-in-from-bottom-3 duration-200">
+        <div className="fixed bottom-5 right-5 z-50 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-xl flex items-center gap-2.5 border border-slate-700 animate-in fade-in slide-in-from-bottom-3 duration-200 motion-reduce:animate-none">
           <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
           <span className="text-xs sm:text-sm font-medium">{toastMessage}</span>
           <button
@@ -770,124 +793,140 @@ export default function App() {
         {/* View Switcher & Filter Bar */}
         <div className="bg-white rounded-xl border border-slate-200 p-3 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
           {/* Tab buttons */}
-          <div className="flex items-center flex-wrap gap-1 bg-slate-100 p-1 rounded-lg">
+          {/* Segmented View Tabs */}
+          <div className="flex items-center flex-wrap gap-1 bg-slate-100/90 p-1 rounded-xl border border-slate-200/80 shadow-2xs">
             <button
               onClick={() => setActiveTab('ledger')}
-              className={`px-3 py-1.5 rounded-md text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors duration-150 cursor-pointer ${
                 activeTab === 'ledger'
                   ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
               }`}
             >
-              <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-              <span>Master Ledger</span>
+              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+              <span>{t('tabMasterLedger')}</span>
             </button>
 
             <button
               onClick={() => setActiveTab('cards')}
-              className={`px-3 py-1.5 rounded-md text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors duration-150 cursor-pointer ${
                 activeTab === 'cards'
                   ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
               }`}
             >
-              <Users className="w-4 h-4 text-blue-600" />
-              <span>Member Cards</span>
+              <Users className="w-3.5 h-3.5 text-blue-600" />
+              <span>{t('tabMemberCards')}</span>
             </button>
 
             <button
               onClick={() => setActiveTab('months')}
-              className={`px-3 py-1.5 rounded-md text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors duration-150 cursor-pointer ${
                 activeTab === 'months'
                   ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
               }`}
             >
-              <CalendarDays className="w-4 h-4 text-teal-600" />
-              <span>Month Breakdown</span>
+              <CalendarDays className="w-3.5 h-3.5 text-teal-600" />
+              <span>{t('tabMonthBreakdown')}</span>
             </button>
 
             <button
               onClick={() => setActiveTab('defaulters')}
-              className={`px-3 py-1.5 rounded-md text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors duration-150 cursor-pointer ${
                 activeTab === 'defaulters'
                   ? 'bg-white text-rose-700 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
               }`}
             >
-              <AlertTriangle className="w-4 h-4 text-rose-600" />
-              <span>Overdue ({summary.totalDueMonths > 0 ? `${summary.totalDueMonths / 2} Shares` : '0'})</span>
+              <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+              <span>{t('tabOverdue')} ({summary.totalDueMonths > 0 ? `${summary.totalDueMonths / 2} Shares` : '0'})</span>
             </button>
 
             <button
               onClick={() => setActiveTab('members')}
-              className={`px-3 py-1.5 rounded-md text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors duration-150 cursor-pointer ${
                 activeTab === 'members'
                   ? 'bg-white text-emerald-800 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
               }`}
             >
-              <Contact className="w-4 h-4 text-emerald-600" />
-              <span>Members Directory</span>
+              <Contact className="w-3.5 h-3.5 text-emerald-600" />
+              <span>{t('tabMembersDirectory')}</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('deeds')}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors duration-150 cursor-pointer ${
+                activeTab === 'deeds'
+                  ? 'bg-white text-emerald-800 shadow-xs ring-1 ring-emerald-500/30'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+              }`}
+            >
+              <Scale className="w-3.5 h-3.5 text-emerald-600" />
+              <span>{t('tabLandDeeds')}</span>
+              <span className="px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-mono font-bold">
+                {language === 'bn' ? 'অফিসিয়াল' : 'Official'}
+              </span>
             </button>
           </div>
 
-          {/* Search & Status Filters (Relevant when looking at Ledger or Cards) */}
+          {/* Search & Status Filters */}
           {(activeTab === 'ledger' || activeTab === 'cards') && (
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
               {/* Status chips */}
               <div className="flex items-center gap-1 text-xs">
                 <button
                   onClick={() => setStatusFilter('all')}
-                  className={`px-2.5 py-1.5 rounded-lg font-medium cursor-pointer transition-colors ${
+                  className={`px-2.5 py-1 rounded-lg font-bold cursor-pointer transition-colors duration-150 ${
                     statusFilter === 'all'
-                      ? 'bg-slate-900 text-white'
+                      ? 'bg-slate-900 text-white shadow-2xs'
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                   }`}
                 >
-                  All ({shares.length})
+                  {t('filterAll')} ({shares.length})
                 </button>
                 <button
                   onClick={() => setStatusFilter('overdue')}
-                  className={`px-2.5 py-1.5 rounded-lg font-medium cursor-pointer transition-colors ${
+                  className={`px-2.5 py-1 rounded-lg font-bold cursor-pointer transition-colors duration-150 ${
                     statusFilter === 'overdue'
-                      ? 'bg-rose-600 text-white'
+                      ? 'bg-rose-600 text-white shadow-2xs'
                       : 'bg-rose-50 text-rose-700 hover:bg-rose-100'
                   }`}
                 >
-                  Due (3)
+                  {t('filterDue')} (3)
                 </button>
                 <button
                   onClick={() => setStatusFilter('paid')}
-                  className={`px-2.5 py-1.5 rounded-lg font-medium cursor-pointer transition-colors ${
+                  className={`px-2.5 py-1 rounded-lg font-bold cursor-pointer transition-colors duration-150 ${
                     statusFilter === 'paid'
-                      ? 'bg-emerald-600 text-white'
+                      ? 'bg-emerald-600 text-white shadow-2xs'
                       : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
                   }`}
                 >
-                  Paid (27)
+                  {t('filterPaid')} (27)
                 </button>
                 <button
                   onClick={() => setStatusFilter('closed')}
-                  className={`px-2.5 py-1.5 rounded-lg font-medium cursor-pointer transition-colors ${
+                  className={`px-2.5 py-1 rounded-lg font-bold cursor-pointer transition-colors duration-150 ${
                     statusFilter === 'closed'
-                      ? 'bg-slate-700 text-white'
+                      ? 'bg-slate-700 text-white shadow-2xs'
                       : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
                   }`}
                 >
-                  Closed (1)
+                  {t('filterClosed')} (1)
                 </button>
               </div>
 
               {/* Search input */}
               <div className="relative">
-                <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
+                <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search name, PAS-ID..."
-                  className="w-full sm:w-48 pl-9 pr-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-emerald-500 focus:ring-1 focus:ring-emerald-500 bg-white"
+                  placeholder={t('searchPlaceholder')}
+                  className="w-full sm:w-48 pl-8 pr-3 py-1.5 text-xs rounded-xl border border-slate-300 focus:outline-emerald-500 focus:ring-2 focus:ring-emerald-500/20 bg-white shadow-2xs"
                 />
                 {searchQuery && (
                   <button
@@ -959,6 +998,10 @@ export default function App() {
             onUpdateMemberDetails={handleUpdateMemberDetails}
           />
         )}
+
+        {activeTab === 'deeds' && (
+          <LandDocumentsView />
+        )}
       </main>
 
       {/* Record Payment Modal */}
@@ -1013,7 +1056,7 @@ export default function App() {
           onClick={(e) => {
             if (e.target === e.currentTarget) setIsResetConfirmOpen(false);
           }}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75"
         >
           <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden p-6 animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center gap-3 mb-4">
@@ -1082,6 +1125,14 @@ export default function App() {
         onAddMonth={handleAddMonth}
         onRemoveMonth={handleRemoveMonth}
         onChangeCurrentMonth={handleChangeCurrentMonth}
+      />
+
+      {/* Real-Time Executive Current Month Action Hub (Bottom-Left Floating Pill) */}
+      <CurrentMonthFloatingTracker
+        shares={shares}
+        currentMonth={currentMonth}
+        onOpenPaymentForShare={handleOpenPaymentForShare}
+        onOpenReceiptForShare={handleOpenReceiptForShare}
       />
     </div>
   );

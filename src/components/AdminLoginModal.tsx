@@ -35,9 +35,9 @@ export const AdminLoginModal: React.FC = () => {
       onClick={(e) => {
         if (e.target === e.currentTarget) handleClose();
       }}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 motion-safe:animate-in motion-safe:fade-in duration-150"
     >
-      <div className="relative w-full max-w-sm bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+      <div className="relative w-full max-w-sm bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-95 duration-150">
         {/* Header */}
         <div className="bg-slate-900 text-white px-6 py-5 flex items-center justify-between border-b border-slate-800">
           <div className="flex items-center gap-3">
@@ -80,7 +80,7 @@ export const AdminLoginModal: React.FC = () => {
           )}
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
               Username
             </label>
             <div className="relative">
@@ -97,7 +97,7 @@ export const AdminLoginModal: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
               Password
             </label>
             <div className="relative">
@@ -122,7 +122,7 @@ export const AdminLoginModal: React.FC = () => {
             </button>
             <button
               type="submit"
-              className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-700/20 transition-all hover:scale-[1.02] active:scale-[0.98] inline-flex items-center gap-1.5 cursor-pointer"
+              className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-700/20 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 inline-flex items-center gap-1.5 cursor-pointer"
             >
               <KeyRound className="w-4 h-4" />
               <span>Login as Admin</span>

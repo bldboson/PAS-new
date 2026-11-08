@@ -45,7 +45,7 @@ export const MonthReconciliationView: React.FC<MonthReconciliationViewProps> = (
             <button
               key={m}
               onClick={() => setSelectedMonth(m)}
-              className={`px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all cursor-pointer flex items-center gap-2 ${
+              className={`px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 cursor-pointer flex items-center gap-2 ${
                 isSelected
                   ? 'bg-slate-900 text-white shadow-sm'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/70'
@@ -87,7 +87,7 @@ export const MonthReconciliationView: React.FC<MonthReconciliationViewProps> = (
           {/* Quick Metrics for Selected Month */}
           <div className="flex items-center gap-3">
             <div className="px-4 py-2 bg-emerald-50 rounded-lg border border-emerald-200 text-left">
-              <span className="text-[11px] font-semibold text-emerald-800 uppercase block">
+              <span className="text-[11px] font-semibold text-emerald-800 block">
                 Collected ({monthStat.paidShares} Shares)
               </span>
               <span className="text-lg font-bold text-emerald-700 font-mono">
@@ -96,7 +96,7 @@ export const MonthReconciliationView: React.FC<MonthReconciliationViewProps> = (
             </div>
 
             <div className="px-4 py-2 bg-rose-50 rounded-lg border border-rose-200 text-left">
-              <span className="text-[11px] font-semibold text-rose-800 uppercase block">
+              <span className="text-[11px] font-semibold text-rose-800 block">
                 Outstanding ({monthStat.dueShares} Shares)
               </span>
               <span className="text-lg font-bold text-rose-700 font-mono">

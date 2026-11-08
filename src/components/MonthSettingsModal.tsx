@@ -87,9 +87,9 @@ export const MonthSettingsModal: React.FC<MonthSettingsModalProps> = ({
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/75 motion-safe:animate-in motion-safe:fade-in duration-150"
     >
-      <div className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+      <div className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-95 duration-150">
         
         {/* Header */}
         <div className="px-5 py-3.5 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800">
@@ -123,13 +123,13 @@ export const MonthSettingsModal: React.FC<MonthSettingsModalProps> = ({
                   onShowOnlyCurrentMonth(currentMonth);
                 }, 'switch to Current Month View');
               }}
-              className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+              className={`p-2.5 rounded-xl border text-left transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 cursor-pointer ${
                 isOnlyCurrentShowing
                   ? 'bg-emerald-50 border-emerald-500 ring-2 ring-emerald-500/20 text-emerald-950 font-bold'
                   : 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700'
               }`}
             >
-              <div className="flex items-center gap-1.5 text-xs font-bold">
+              <div className="flex items-center gap-1.5 text-xs font-bold whitespace-nowrap">
                 <Clock className="w-3.5 h-3.5 text-emerald-600" />
                 <span>Current Month Only</span>
               </div>
@@ -143,13 +143,13 @@ export const MonthSettingsModal: React.FC<MonthSettingsModalProps> = ({
               onClick={() => {
                 onShowAllMonths();
               }}
-              className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+              className={`p-2.5 rounded-xl border text-left transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 cursor-pointer ${
                 !isOnlyCurrentShowing
                   ? 'bg-emerald-50 border-emerald-500 ring-2 ring-emerald-500/20 text-emerald-950 font-bold'
                   : 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700'
               }`}
             >
-              <div className="flex items-center gap-1.5 text-xs font-bold">
+              <div className="flex items-center gap-1.5 text-xs font-bold whitespace-nowrap">
                 <Layers className="w-3.5 h-3.5 text-blue-600" />
                 <span>Show All Months</span>
               </div>
@@ -183,7 +183,7 @@ export const MonthSettingsModal: React.FC<MonthSettingsModalProps> = ({
           {/* Year Filter Tabs for Clean Browsing */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+              <label className="text-xs font-semibold text-slate-700">
                 Select Months to Display (2026 - 2029)
               </label>
               <span className="text-[11px] text-slate-500 font-semibold font-mono">
@@ -198,7 +198,7 @@ export const MonthSettingsModal: React.FC<MonthSettingsModalProps> = ({
                   key={yr}
                   type="button"
                   onClick={() => setSelectedYearTab(yr)}
-                  className={`flex-1 py-1 rounded text-xs font-bold transition-all cursor-pointer ${
+                  className={`flex-1 py-1 rounded text-xs font-bold transition-colors duration-150 cursor-pointer ${
                     selectedYearTab === yr
                       ? 'bg-white text-slate-900 shadow-2xs'
                       : 'text-slate-600 hover:text-slate-900'
@@ -220,7 +220,7 @@ export const MonthSettingsModal: React.FC<MonthSettingsModalProps> = ({
                     key={m}
                     type="button"
                     onClick={() => handleToggleMonth(m)}
-                    className={`flex items-center justify-between px-2.5 py-2 rounded-lg border text-xs font-mono font-bold transition-all cursor-pointer ${
+                    className={`flex items-center justify-between px-2.5 py-2 rounded-lg border text-xs font-mono font-bold transition-colors duration-150 cursor-pointer ${
                       isActive
                         ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs'
                         : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
