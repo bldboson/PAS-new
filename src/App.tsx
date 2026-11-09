@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { ShareRecord, MonthKey, SocietySummary } from './types';
 import { INITIAL_SHARES } from './data/initialData';
-import { calculateShareRecord, calculateSocietySummary, formatTaka } from './utils/calculations';
+import { calculateShareRecord, calculateSocietySummary, formatTaka, getCurrentSystemMonthKey } from './utils/calculations';
 import { Navbar } from './components/Navbar';
 import { SummaryCards } from './components/SummaryCards';
 import { MasterLedgerTable } from './components/MasterLedgerTable';
@@ -101,31 +101,43 @@ export default function App() {
   });
 
   const [currentMonth, setCurrentMonth] = useState<string>(() => {
-    try {
-      const saved = localStorage.getItem('pas_current_month_v1');
-      if (saved) return saved;
-    } catch (e) {}
-    return 'Oct-26';
+    return getCurrentSystemMonthKey();
   });
 
-  // Persist month configuration
+  // Automatically keep current billing month synced with real-world calendar
   useEffect(() => {
+    const live = getCurrentSystemMonthKey();
+    setCurrentMonth(live);
     try {
-      localStorage.setItem('pas_configured_months_v1', JSON.stringify(allConfiguredMonths));
+      localStorage.setItem('pas_current_month_v1', live);
     } catch (e) {}
-  }, [allConfiguredMonths]);
 
-  useEffect(() => {
-    try {
-      localStorage.setItem('pas_active_display_months_v1', JSON.stringify(activeMonths));
-    } catch (e) {}
-  }, [activeMonths]);
+    // Ensure live month is included in configured and active months
+    setAllConfiguredMonths((prev) => (prev.includes(live) ? prev : [...prev, live]));
+    setActiveMonths((prev) => (prev.includes(live) ? prev : [...prev, live]));
 
-  useEffect(() => {
-    try {
-      localStorage.setItem('pas_current_month_v1', currentMonth);
-    } catch (e) {}
-  }, [currentMonth]);
+    const checkMonthRollover = () => {
+      const currentLive = getCurrentSystemMonthKey();
+      setCurrentMonth((prev) => {
+        if (prev !== currentLive) {
+          try {
+            localStorage.setItem('pas_current_month_v1', currentLive);
+          } catch (e) {}
+          setAllConfiguredMonths((p) => (p.includes(currentLive) ? p : [...p, currentLive]));
+          setActiveMonths((p) => (p.includes(currentLive) ? p : [...p, currentLive]));
+          return currentLive;
+        }
+        return prev;
+      });
+    };
+
+    window.addEventListener('focus', checkMonthRollover);
+    const interval = setInterval(checkMonthRollover, 60000);
+    return () => {
+      window.removeEventListener('focus', checkMonthRollover);
+      clearInterval(interval);
+    };
+  }, []);
 
   // Google Sheets Live Sync State
   const [isSyncModalOpen, setIsSyncModalOpen] = useState<boolean>(false);
@@ -209,7 +221,7 @@ export default function App() {
   };
 
   const handleOpenReceiptForShare = (share: ShareRecord, month?: MonthKey) => {
-    let targetMonth = month || 'Oct-26';
+    let targetMonth = month || currentMonth;
     if (share.months[targetMonth]?.status !== 'paid') {
       const lastPaid = (['Dec-26', 'Nov-26', 'Oct-26', 'Sep-26', 'Aug-26'] as MonthKey[]).find(
         (m) => share.months[m]?.status === 'paid'

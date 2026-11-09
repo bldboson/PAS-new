@@ -387,3 +387,62 @@ export function takaInWords(amount: number): string {
 
   return (words.trim() + ' Taka Only').replace(/\s+/g, ' ');
 }
+
+/**
+ * Dynamic Chronological Month Key:
+ * Determines the live calendar month key (e.g. 'Nov-26', 'Dec-26', 'Jan-27').
+ */
+export function getCurrentSystemMonthKey(date: Date = new Date()): string {
+  const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const m = MONTH_NAMES[date.getMonth()];
+  const y = String(date.getFullYear()).slice(-2);
+  return `${m}-${y}`;
+}
+
+/**
+ * Format month key to full localized display label (e.g., 'Nov-26' => 'নভেম্বর ২০২৬' or 'November 2026').
+ */
+export function formatMonthLabel(monthKey: string, isBn: boolean = false): string {
+  if (!monthKey) return '';
+  const [shortMonth, shortYear] = monthKey.split('-');
+  const fullYear = shortYear ? `20${shortYear}` : '';
+
+  const BN_MONTH_MAP: Record<string, string> = {
+    Jan: 'জানুয়ারি',
+    Feb: 'ফেব্রুয়ারি',
+    Mar: 'মার্চ',
+    Apr: 'এপ্রিল',
+    May: 'মে',
+    Jun: 'জুন',
+    Jul: 'জুলাই',
+    Aug: 'আগস্ট',
+    Sep: 'সেপ্টেম্বর',
+    Oct: 'অক্টোবর',
+    Nov: 'নভেম্বর',
+    Dec: 'ডিসেম্বর',
+  };
+
+  const EN_MONTH_MAP: Record<string, string> = {
+    Jan: 'January',
+    Feb: 'February',
+    Mar: 'March',
+    Apr: 'April',
+    May: 'May',
+    Jun: 'June',
+    Jul: 'July',
+    Aug: 'August',
+    Sep: 'September',
+    Oct: 'October',
+    Nov: 'November',
+    Dec: 'December',
+  };
+
+  if (isBn) {
+    const bnMonth = BN_MONTH_MAP[shortMonth] || shortMonth;
+    const bnYear = fullYear.replace(/\d/g, (d) => '০১২৩৪৫৬৭৮৯'[parseInt(d, 10)]);
+    return `${bnMonth} ${bnYear}`;
+  }
+
+  const enMonth = EN_MONTH_MAP[shortMonth] || shortMonth;
+  return `${enMonth} ${fullYear}`;
+}

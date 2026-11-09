@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { ShareRecord, MonthKey } from '../types';
 import { useLanguage } from '../context/LanguageContext';
-import { formatTaka } from '../utils/calculations';
+import { formatTaka, getCurrentSystemMonthKey, formatMonthLabel } from '../utils/calculations';
 import {
   X,
   CreditCard,
@@ -32,12 +32,16 @@ interface CurrentMonthFloatingTrackerProps {
 
 export const CurrentMonthFloatingTracker: React.FC<CurrentMonthFloatingTrackerProps> = ({
   shares,
-  currentMonth = 'Oct-26',
+  currentMonth: propCurrentMonth,
   onOpenPaymentForShare,
   onOpenReceiptForShare,
 }) => {
   const { language } = useLanguage();
   const isBn = language === 'bn';
+
+  // Always dynamically resolve the true real-world current calendar month
+  const liveSystemMonth = useMemo(() => getCurrentSystemMonthKey(), []);
+  const currentMonth = propCurrentMonth || liveSystemMonth;
 
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<'pending' | 'paid' | 'analytics'>('pending');
@@ -136,10 +140,11 @@ export const CurrentMonthFloatingTracker: React.FC<CurrentMonthFloatingTrackerPr
 
   // Generate WhatsApp reminder text for a single member
   const getWhatsAppReminderText = (share: ShareRecord) => {
+    const monthDisplay = formatMonthLabel(currentMonth, isBn);
     if (isBn) {
-      return `আসসালামু আলাইকুম শ্রদ্ধেয় ${share.memberName} ভাই। প্রগ্রেসিভ এসোসিয়েশন সোসাইটির ${currentMonth} মাসের নিয়মিত কিস্তি (৳২,৮০০) পরিশোধের বিনীত অনুরোধ জানাচ্ছি। শেয়ার আইডি: ${share.id}। ইসলামী ব্যাংক বা বিকাশ/নগদে পরিশোধ করতে পারেন। ধন্যবাদ।`;
+      return `আসসালামু আলাইকুম শ্রদ্ধেয় ${share.memberName} ভাই। প্রগ্রেসিভ এসোসিয়েশন সোসাইটির ${monthDisplay} (${currentMonth}) মাসের নিয়মিত কিস্তি (৳২,৮০০) পরিশোধের বিনীত অনুরোধ জানাচ্ছি। শেয়ার আইডি: ${share.id}। ইসলামী ব্যাংক বা বিকাশ/নগদে পরিশোধ করতে পারেন। ধন্যবাদ।`;
     }
-    return `Assalamu Alaikum Dear ${share.memberName} Bhai. Friendly reminder to deposit the monthly installment for ${currentMonth} (Tk. 2,800) for Share ID: ${share.id} with Progressive Association Society. Thank you.`;
+    return `Assalamu Alaikum Dear ${share.memberName} Bhai. Friendly reminder to deposit the monthly installment for ${monthDisplay} (${currentMonth}) (Tk. 2,800) for Share ID: ${share.id} with Progressive Association Society. Thank you.`;
   };
 
   // Open direct WhatsApp chat
@@ -161,9 +166,10 @@ export const CurrentMonthFloatingTracker: React.FC<CurrentMonthFloatingTrackerPr
   // Generate & Copy full committee WhatsApp bulletin
   const handleCopyBulletin = () => {
     const todayStr = new Date().toLocaleDateString('en-GB');
+    const monthDisplay = formatMonthLabel(currentMonth, isBn);
     let bulletin = `━━━━━━━━━━━━━━━━━━━━\n`;
     bulletin += `🏛️ প্রগ্রেসিভ এসোসিয়েশন সোসাইটি\n`;
-    bulletin += `📊 চলতি মাসের কালেকশন বুলেটিন (${currentMonth})\n`;
+    bulletin += `📊 চলতি মাসের কালেকশন বুলেটিন — ${monthDisplay} (${currentMonth})\n`;
     bulletin += `📅 তারিখ: ${todayStr}\n`;
     bulletin += `━━━━━━━━━━━━━━━━━━━━\n\n`;
     bulletin += `💰 মোট আদায়: ৳ ${totalCollected.toLocaleString('en-IN')} (${paidShares.length}টি শেয়ার)\n`;
@@ -272,8 +278,9 @@ export const CurrentMonthFloatingTracker: React.FC<CurrentMonthFloatingTrackerPr
                     <h3 className="font-bold text-sm sm:text-base text-white tracking-tight">
                       {isBn ? 'চলতি মাসের লাইভ ট্র্যাকার' : 'Current Month Live Tracker'}
                     </h3>
-                    <span className="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-mono font-bold">
-                      {currentMonth}
+                    <span className="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-mono font-bold flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                      <span>{currentMonth} ({formatMonthLabel(currentMonth, isBn)})</span>
                     </span>
                   </div>
                   <p className="text-[11px] text-slate-400">

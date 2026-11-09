@@ -7,6 +7,8 @@ import {
   getPenaltyStage,
   formatTaka,
   takaInWords,
+  getCurrentSystemMonthKey,
+  formatMonthLabel,
 } from './calculations.ts';
 import { INITIAL_SHARES } from '../data/initialData.ts';
 import type { ShareRecord } from '../types.ts';
@@ -199,4 +201,22 @@ test('formatSharesForSheet generates exact Image 2 layout with 38 rows and perfe
   assert.equal(rows[37][3], 160000);
   assert.equal(rows[37][14], 395200);
   assert.equal(rows[37][18], summary.totalOutstandingDue);
+});
+
+test('getCurrentSystemMonthKey and formatMonthLabel handle dynamic calendar dates correctly', () => {
+  // Test November 2026
+  const nov2026 = new Date(2026, 10, 9); // Month 10 is November
+  assert.equal(getCurrentSystemMonthKey(nov2026), 'Nov-26');
+  assert.equal(formatMonthLabel('Nov-26', true), 'নভেম্বর ২০২৬');
+  assert.equal(formatMonthLabel('Nov-26', false), 'November 2026');
+
+  // Test December 2026 rollover
+  const dec2026 = new Date(2026, 11, 1); // Month 11 is December
+  assert.equal(getCurrentSystemMonthKey(dec2026), 'Dec-26');
+  assert.equal(formatMonthLabel('Dec-26', true), 'ডিসেম্বর ২০২৬');
+
+  // Test January 2027 rollover
+  const jan2027 = new Date(2027, 0, 1); // Month 0 is January
+  assert.equal(getCurrentSystemMonthKey(jan2027), 'Jan-27');
+  assert.equal(formatMonthLabel('Jan-27', true), 'জানুয়ারি ২০২৭');
 });
