@@ -62,12 +62,19 @@
     @apply border-border;
   }
 
+  html {
+    scrollbar-color: var(--muted-foreground) var(--card);
+    caret-color: var(--primary);
+  }
+
   :focus-visible {
     outline: 2px solid var(--ring);
     outline-offset: 2px;
   }
 
   body {
+    scrollbar-color: var(--muted-foreground) var(--card);
+    caret-color: var(--primary);
     @apply bg-background text-foreground;
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
@@ -119,6 +126,32 @@
   color: var(--muted-foreground);
 }
 
+/* White Theme: Uniform Column Colors & Distinct Due Highlight */
+.theme-forest-light table tbody tr:not(.row-has-due):not(.row-closed) {
+  background-color: var(--card) !important;
+}
+
+.theme-forest-light table tbody tr:not(.row-has-due):not(.row-closed) td {
+  background-color: var(--card) !important;
+}
+
+.theme-forest-light table tbody tr:not(.row-has-due):not(.row-closed):hover,
+.theme-forest-light table tbody tr:not(.row-has-due):not(.row-closed):hover td {
+  background-color: var(--row-clean-hover-bg) !important;
+}
+
+.theme-forest-light table tbody tr.row-has-due,
+.theme-forest-light table tbody tr.row-has-due td.sticky,
+.theme-forest-light table tbody tr.row-has-due td {
+  background-color: var(--table-overdue-row-bg) !important;
+}
+
+.theme-forest-light table tbody tr.row-has-due:hover,
+.theme-forest-light table tbody tr.row-has-due:hover td.sticky,
+.theme-forest-light table tbody tr.row-has-due:hover td {
+  background-color: var(--table-overdue-row-hover-bg) !important;
+}
+
 /* Theme 3: Forest Dark (Obsidian & Radiant Mint) */
 .dark,
 .theme-forest-dark {
@@ -134,52 +167,33 @@
 .dark header,
 .theme-forest-dark header {
   background-color: var(--sidebar);
+  color: var(--foreground) !important;
   border-bottom-color: var(--border);
 }
 
+/* Card & Modal Surfaces */
 .dark .bg-white,
 .theme-forest-dark .bg-white {
+  background-color: var(--card) !important;
+  color: var(--card-foreground) !important;
+}
+
+/* Table Backgrounds & Alternating Rows */
+.dark table,
+.theme-forest-dark table {
   background-color: var(--card);
-  color: var(--card-foreground);
-}
-
-.dark .bg-slate-50,
-.dark .bg-slate-100,
-.dark .bg-slate-100\/70,
-.dark .bg-slate-100\/80,
-.dark .bg-slate-100\/90,
-.theme-forest-dark .bg-slate-50,
-.theme-forest-dark .bg-slate-100,
-.theme-forest-dark .bg-slate-100\/70,
-.theme-forest-dark .bg-slate-100\/80,
-.theme-forest-dark .bg-slate-100\/90 {
-  background-color: var(--muted);
-}
-
-.dark .border-slate-200,
-.dark .border-slate-300,
-.dark .border-slate-200\/80,
-.dark .border-slate-200\/90,
-.theme-forest-dark .border-slate-200,
-.theme-forest-dark .border-slate-300,
-.theme-forest-dark .border-slate-200\/80,
-.theme-forest-dark .border-slate-200\/90 {
-  border-color: var(--border);
-}
-
-.dark th,
-.dark td,
-.theme-forest-dark th,
-.theme-forest-dark td {
-  border-color: var(--border);
-}
-
-.dark th.bg-slate-100,
-.dark th.bg-slate-50,
-.theme-forest-dark th.bg-slate-100,
-.theme-forest-dark th.bg-slate-50 {
-  background-color: var(--muted);
   color: var(--foreground);
+}
+
+.dark thead tr,
+.theme-forest-dark thead tr {
+  background-color: var(--muted) !important;
+  color: var(--foreground) !important;
+}
+
+.dark tbody tr:hover,
+.theme-forest-dark tbody tr:hover {
+  background-color: var(--row-hover-bg) !important;
 }
 
 .dark td[class*="sticky"],
@@ -187,23 +201,312 @@
   box-shadow: 1px 0 0 0 var(--border);
 }
 
+.dark td[class*="sticky"].bg-amber-50,
+.theme-forest-dark td[class*="sticky"].bg-amber-50 {
+  background-color: var(--table-sticky-overdue-bg) !important;
+  color: var(--foreground) !important;
+}
+
+.dark tbody tr:hover td[class*="sticky"],
+.theme-forest-dark tbody tr:hover td[class*="sticky"] {
+  background-color: var(--row-hover-sticky-bg) !important;
+}
+
+/* Neutral Slate Overrides */
+.dark .bg-slate-50,
+.dark .bg-slate-100,
+.dark .bg-slate-100\/60,
+.dark .bg-slate-100\/70,
+.dark .bg-slate-100\/80,
+.dark .bg-slate-100\/90,
+.dark .bg-slate-50\/30,
+.theme-forest-dark .bg-slate-50,
+.theme-forest-dark .bg-slate-100,
+.theme-forest-dark .bg-slate-100\/60,
+.theme-forest-dark .bg-slate-100\/70,
+.theme-forest-dark .bg-slate-100\/80,
+.theme-forest-dark .bg-slate-100\/90,
+.theme-forest-dark .bg-slate-50\/30 {
+  background-color: var(--muted) !important;
+  color: var(--foreground) !important;
+}
+
+.dark .bg-slate-200,
+.dark .bg-slate-200\/70,
+.theme-forest-dark .bg-slate-200,
+.theme-forest-dark .bg-slate-200\/70 {
+  background-color: var(--slate-subtle) !important;
+  color: var(--foreground) !important;
+}
+
+/* Border Overrides */
+.dark .border-slate-100,
+.dark .border-slate-200,
+.dark .border-slate-300,
+.dark .border-slate-200\/80,
+.dark .border-slate-200\/90,
+.dark .divide-slate-100,
+.dark .divide-slate-200,
+.theme-forest-dark .border-slate-100,
+.theme-forest-dark .border-slate-200,
+.theme-forest-dark .border-slate-300,
+.theme-forest-dark .border-slate-200\/80,
+.theme-forest-dark .border-slate-200\/90,
+.theme-forest-dark .divide-slate-100,
+.theme-forest-dark .divide-slate-200 {
+  border-color: var(--border) !important;
+}
+
+/* Text Hierarchy in Dark Mode */
 .dark .text-slate-900,
 .dark .text-slate-800,
 .theme-forest-dark .text-slate-900,
 .theme-forest-dark .text-slate-800 {
-  color: var(--foreground);
+  color: var(--foreground) !important;
 }
 
 .dark .text-slate-700,
-.theme-forest-dark .text-slate-700 {
-  color: var(--muted-foreground);
+.dark .text-slate-600,
+.theme-forest-dark .text-slate-700,
+.theme-forest-dark .text-slate-600 {
+  color: var(--accent-foreground) !important;
 }
 
-.dark .text-slate-600,
 .dark .text-slate-500,
-.theme-forest-dark .text-slate-600,
-.theme-forest-dark .text-slate-500 {
-  color: var(--muted-foreground);
+.dark .text-slate-400,
+.theme-forest-dark .text-slate-500,
+.theme-forest-dark .text-slate-400 {
+  color: var(--muted-foreground) !important;
+}
+
+/* -------------------------------------------------------------
+   AMBER / OVERDUE CELL OVERRIDES (Prevents white-on-white text)
+   ------------------------------------------------------------- */
+.dark .bg-amber-50,
+.dark .bg-amber-50\/20,
+.dark .bg-amber-50\/30,
+.dark .bg-amber-50\/40,
+.dark .bg-amber-50\/60,
+.dark .bg-amber-50\/70,
+.dark .bg-amber-50\/80,
+.dark .bg-amber-100,
+.dark .bg-amber-200,
+.theme-forest-dark .bg-amber-50,
+.theme-forest-dark .bg-amber-50\/20,
+.theme-forest-dark .bg-amber-50\/30,
+.theme-forest-dark .bg-amber-50\/40,
+.theme-forest-dark .bg-amber-50\/60,
+.theme-forest-dark .bg-amber-50\/70,
+.theme-forest-dark .bg-amber-50\/80,
+.theme-forest-dark .bg-amber-100,
+.theme-forest-dark .bg-amber-200 {
+  background-color: var(--badge-amber-bg) !important;
+}
+
+.dark .text-amber-950,
+.dark .text-amber-900,
+.dark .text-amber-800,
+.dark .text-amber-700,
+.dark .text-amber-600,
+.dark .text-amber-500,
+.theme-forest-dark .text-amber-950,
+.theme-forest-dark .text-amber-900,
+.theme-forest-dark .text-amber-800,
+.theme-forest-dark .text-amber-700,
+.theme-forest-dark .text-amber-600,
+.theme-forest-dark .text-amber-500 {
+  color: var(--badge-amber-text) !important;
+}
+
+.dark .border-amber-100,
+.dark .border-amber-200,
+.dark .border-amber-300,
+.theme-forest-dark .border-amber-100,
+.theme-forest-dark .border-amber-200,
+.theme-forest-dark .border-amber-300 {
+  border-color: var(--badge-amber-border) !important;
+}
+
+.dark .ring-amber-200,
+.dark .ring-amber-300,
+.dark .ring-amber-200\/80,
+.dark .ring-amber-300\/60,
+.dark .ring-amber-300\/40,
+.theme-forest-dark .ring-amber-200,
+.theme-forest-dark .ring-amber-300,
+.theme-forest-dark .ring-amber-200\/80,
+.theme-forest-dark .ring-amber-300\/60,
+.theme-forest-dark .ring-amber-300\/40 {
+  --tw-ring-color: var(--badge-amber-border) !important;
+}
+
+/* -------------------------------------------------------------
+   EMERALD / PAID & DEPOSIT OVERRIDES (Luminous Mint)
+   ------------------------------------------------------------- */
+.dark .bg-emerald-50,
+.dark .bg-emerald-50\/20,
+.dark .bg-emerald-50\/30,
+.dark .bg-emerald-50\/40,
+.dark .bg-emerald-50\/70,
+.dark .bg-emerald-100,
+.dark .bg-emerald-200,
+.theme-forest-dark .bg-emerald-50,
+.theme-forest-dark .bg-emerald-50\/20,
+.theme-forest-dark .bg-emerald-50\/30,
+.theme-forest-dark .bg-emerald-50\/40,
+.theme-forest-dark .bg-emerald-50\/70,
+.theme-forest-dark .bg-emerald-100,
+.theme-forest-dark .bg-emerald-200 {
+  background-color: var(--badge-emerald-bg) !important;
+}
+
+.dark .text-emerald-950,
+.dark .text-emerald-900,
+.dark .text-emerald-800,
+.dark .text-emerald-700,
+.dark .text-emerald-600,
+.dark .text-emerald-500,
+.theme-forest-dark .text-emerald-950,
+.theme-forest-dark .text-emerald-900,
+.theme-forest-dark .text-emerald-800,
+.theme-forest-dark .text-emerald-700,
+.theme-forest-dark .text-emerald-600,
+.theme-forest-dark .text-emerald-500 {
+  color: var(--badge-emerald-text) !important;
+}
+
+.dark .border-emerald-100,
+.dark .border-emerald-200,
+.dark .border-emerald-300,
+.theme-forest-dark .border-emerald-100,
+.theme-forest-dark .border-emerald-200,
+.theme-forest-dark .border-emerald-300 {
+  border-color: var(--badge-emerald-border) !important;
+}
+
+.dark .ring-emerald-300,
+.dark .ring-emerald-300\/60,
+.theme-forest-dark .ring-emerald-300,
+.theme-forest-dark .ring-emerald-300\/60 {
+  --tw-ring-color: var(--badge-emerald-border) !important;
+}
+
+/* -------------------------------------------------------------
+   ROSE / DUE & LATE FEE OVERRIDES (Vibrant Coral Rose)
+   ------------------------------------------------------------- */
+.dark .bg-rose-50,
+.dark .bg-rose-50\/30,
+.dark .bg-rose-50\/40,
+.dark .bg-rose-50\/50,
+.dark .bg-rose-50\/60,
+.dark .bg-rose-100,
+.dark .bg-rose-100\/70,
+.dark .bg-rose-200,
+.theme-forest-dark .bg-rose-50,
+.theme-forest-dark .bg-rose-50\/30,
+.theme-forest-dark .bg-rose-50\/40,
+.theme-forest-dark .bg-rose-50\/50,
+.theme-forest-dark .bg-rose-50\/60,
+.theme-forest-dark .bg-rose-100,
+.theme-forest-dark .bg-rose-100\/70,
+.theme-forest-dark .bg-rose-200 {
+  background-color: var(--badge-rose-bg) !important;
+}
+
+.dark .text-rose-950,
+.dark .text-rose-900,
+.dark .text-rose-800,
+.dark .text-rose-700,
+.dark .text-rose-600,
+.dark .text-rose-500,
+.theme-forest-dark .text-rose-950,
+.theme-forest-dark .text-rose-900,
+.theme-forest-dark .text-rose-800,
+.theme-forest-dark .text-rose-700,
+.theme-forest-dark .text-rose-600,
+.theme-forest-dark .text-rose-500 {
+  color: var(--badge-rose-text) !important;
+}
+
+.dark .border-rose-200,
+.dark .border-rose-300,
+.theme-forest-dark .border-rose-200,
+.theme-forest-dark .border-rose-300 {
+  border-color: var(--badge-rose-border) !important;
+}
+
+.dark .ring-rose-300,
+.dark .ring-rose-300\/60,
+.theme-forest-dark .ring-rose-300,
+.theme-forest-dark .ring-rose-300\/60 {
+  --tw-ring-color: var(--badge-rose-border) !important;
+}
+
+.dark .hover\:bg-rose-200:hover,
+.theme-forest-dark .hover\:bg-rose-200:hover {
+  background-color: var(--badge-rose-border) !important;
+}
+
+.dark .hover\:bg-emerald-50:hover,
+.theme-forest-dark .hover\:bg-emerald-50:hover {
+  background-color: var(--badge-emerald-bg) !important;
+}
+
+.dark .hover\:bg-rose-50:hover,
+.theme-forest-dark .hover\:bg-rose-50:hover {
+  background-color: var(--badge-rose-bg) !important;
+}
+
+/* -------------------------------------------------------------
+   TEAL / BRAND TAG OVERRIDES
+   ------------------------------------------------------------- */
+.dark .bg-teal-50,
+.theme-forest-dark .bg-teal-50 {
+  background-color: var(--badge-teal-bg) !important;
+}
+
+.dark .text-teal-600,
+.dark .text-teal-700,
+.theme-forest-dark .text-teal-600,
+.theme-forest-dark .text-teal-700 {
+  color: var(--badge-teal-text) !important;
+}
+
+.dark .border-teal-200,
+.theme-forest-dark .border-teal-200 {
+  border-color: var(--badge-teal-border) !important;
+}
+
+/* -------------------------------------------------------------
+   BLUE / CHANNELS OVERRIDES (Bright Sky/Cyan)
+   ------------------------------------------------------------- */
+.dark .bg-blue-50,
+.dark .bg-blue-50\/40,
+.dark .bg-blue-50\/60,
+.theme-forest-dark .bg-blue-50,
+.theme-forest-dark .bg-blue-50\/40,
+.theme-forest-dark .bg-blue-50\/60 {
+  background-color: var(--badge-blue-bg) !important;
+}
+
+.dark .text-blue-900,
+.dark .text-blue-800,
+.dark .text-blue-700,
+.dark .text-blue-600,
+.dark .text-blue-500,
+.theme-forest-dark .text-blue-900,
+.theme-forest-dark .text-blue-800,
+.theme-forest-dark .text-blue-700,
+.theme-forest-dark .text-blue-600,
+.theme-forest-dark .text-blue-500 {
+  color: var(--badge-blue-text) !important;
+}
+
+.dark .border-blue-100,
+.dark .border-blue-200,
+.theme-forest-dark .border-blue-100,
+.theme-forest-dark .border-blue-200 {
+  border-color: var(--badge-blue-border) !important;
 }
 
 .dark input:not([type="checkbox"]):not([type="radio"]),

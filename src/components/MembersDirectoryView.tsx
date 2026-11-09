@@ -105,33 +105,6 @@ export const MembersDirectoryView: React.FC<MembersDirectoryViewProps> = ({
     address: '',
   });
 
-  const handleOpenEdit = (member: MemberDirectoryInfo) => {
-    requireAdmin(() => {
-      setEditingMember(member);
-      setEditForm({
-        name: member.name,
-        phone: member.phone,
-        nid: member.nid,
-        address: member.address,
-      });
-    }, `edit member directory profile for "${member.name}"`);
-  };
-
-  const handleSaveEdit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingMember || !onUpdateMemberDetails) return;
-
-    onUpdateMemberDetails({
-      oldName: editingMember.name,
-      newName: editForm.name,
-      phone: editForm.phone,
-      address: editForm.address,
-      nid: editForm.nid,
-    });
-
-    setEditingMember(null);
-  };
-
   // Group unique members
   const memberList: MemberDirectoryInfo[] = useMemo(() => {
     const memberMap = new Map<string, ShareRecord[]>();
@@ -153,10 +126,8 @@ export const MembersDirectoryView: React.FC<MembersDirectoryViewProps> = ({
       const firstWithSl = mShares.find((s) => s.sl && s.sl.toString().trim() !== '');
       const sl = firstWithSl?.sl ? firstWithSl.sl.toString().padStart(2, '0') : (idx + 1).toString().padStart(2, '0');
       const phone = mShares.find((s) => s.phone)?.phone || `+880 171${(idx * 111111).toString().slice(0, 7)}`;
-      
-      // Member specific address & NID or fallback
       const address = mShares.find((s) => s.address)?.address || DEFAULT_LOCATIONS[idx % DEFAULT_LOCATIONS.length];
-      const nid = mShares.find((s) => s.nid)?.nid || `19${80 + (idx % 20)}269${(345678 + idx * 8912).toString().slice(0, 7)}`;
+      const nid = mShares.find((s) => s.nid)?.nid || `198526934${(5000 + idx).toString().slice(0, 4)}`;
 
       const totalFunded = mShares.reduce((sum, s) => sum + s.totalDeposit, 0);
       const totalAdmission = mShares.reduce((sum, s) => sum + s.admissionFee, 0);
@@ -218,6 +189,33 @@ export const MembersDirectoryView: React.FC<MembersDirectoryViewProps> = ({
       return sortOrder === 'desc' ? -cmp : cmp;
     });
   }, [filteredMembers, sortBy, sortOrder]);
+
+  const handleOpenEdit = (member: MemberDirectoryInfo) => {
+    requireAdmin(() => {
+      setEditingMember(member);
+      setEditForm({
+        name: member.name,
+        phone: member.phone,
+        nid: member.nid,
+        address: member.address,
+      });
+    }, `edit member directory profile for "${member.name}"`);
+  };
+
+  const handleSaveEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingMember || !onUpdateMemberDetails) return;
+
+    onUpdateMemberDetails({
+      oldName: editingMember.name,
+      newName: editForm.name,
+      phone: editForm.phone,
+      address: editForm.address,
+      nid: editForm.nid,
+    });
+
+    setEditingMember(null);
+  };
 
   const toggleSort = (field: 'name' | 'funded' | 'due' | 'shares') => {
     if (sortBy === field) {

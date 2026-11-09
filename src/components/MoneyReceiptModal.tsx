@@ -1,8 +1,21 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { ShareRecord, MonthKey } from '../types';
-import { formatTaka, takaInWords } from '../utils/calculations';
+import { formatTaka, takaInWords, getCurrentSystemMonthKey } from '../utils/calculations';
 import { Printer, X, ShieldCheck, Trash2, Edit3, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { TextureButton } from './ui/texture-button';
+
+function formatReceiptDate(rawDate?: string): string {
+  if (!rawDate) return '15/09/2026';
+  if (rawDate.includes('.')) return rawDate.split('.').join('/');
+  if (rawDate.includes('-')) {
+    const parts = rawDate.split('-');
+    if (parts.length === 3) {
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+  }
+  return rawDate;
+}
 
 interface MoneyReceiptModalProps {
   isOpen: boolean;
@@ -17,7 +30,7 @@ export const MoneyReceiptModal: React.FC<MoneyReceiptModalProps> = ({
   isOpen,
   onClose,
   share,
-  month = 'Oct-26',
+  month = getCurrentSystemMonthKey(),
   onVoidPayment,
   onEditPayment,
 }) => {
@@ -36,17 +49,7 @@ export const MoneyReceiptModal: React.FC<MoneyReceiptModalProps> = ({
   const amount = payment.amount || 2800;
   const words = takaInWords(amount);
   const receiptNo = `PAS-${month.replace('-', '')}-${share.id.replace('PAS-', '')}`;
-  const paymentDate = useMemo(() => {
-    if (!payment.date) return '15/09/2026';
-    if (payment.date.includes('.')) return payment.date.split('.').join('/');
-    if (payment.date.includes('-')) {
-      const parts = payment.date.split('-');
-      if (parts.length === 3) {
-        return `${parts[2]}/${parts[1]}/${parts[0]}`;
-      }
-    }
-    return payment.date;
-  }, [payment.date]);
+  const paymentDate = formatReceiptDate(payment.date);
 
   const handlePrint = () => {
     window.print();
@@ -65,63 +68,91 @@ export const MoneyReceiptModal: React.FC<MoneyReceiptModalProps> = ({
       onClick={(e) => {
         if (e.target === e.currentTarget && !showConfirmVoid) onClose();
       }}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 overflow-y-auto print:static print:p-0 print:bg-white print:overflow-visible print:block print-modal"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/75 print:static print:p-0 print:bg-white print:overflow-visible print:block print-modal"
     >
-      <div className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-8 print:m-0 print:border-none print:shadow-none print:max-w-none print:w-full print:block">
+      <div className="relative w-full max-w-2xl max-h-[92vh] flex flex-col bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden print:m-0 print:border-none print:shadow-none print:max-w-none print:w-full print:max-h-none print:block">
         {/* Top Control Bar (Hidden when printing) */}
-        <div className="flex flex-wrap items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50 gap-2 print:hidden">
+        <div className="shrink-0 flex flex-wrap items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50 gap-2 print:hidden">
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse motion-reduce:animate-none" />
             <h3 className="font-bold text-slate-800 text-sm">Official Money Receipt</h3>
           </div>
           <div className="flex items-center flex-wrap gap-2">
             {onEditPayment && (
-              <button
-                onClick={() => {
-                  requireAdmin(() => {
-                    onEditPayment(share, month);
-                    onClose();
-                  }, 'edit payment entry');
-                }}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none text-slate-700 text-xs font-semibold transition-colors cursor-pointer"
-                title="Edit payment amount, date or notes"
-              >
-                <Edit3 className="w-3.5 h-3.5 text-blue-600" />
-                <span>Edit Entry (এডিট করুন)</span>
-              </button>
+              <div className="w-auto">
+                <TextureButton
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    requireAdmin(() => {
+                      onEditPayment(share, month);
+                      onClose();
+                    }, 'edit payment entry');
+                  }}
+                  className="w-auto"
+                  title="Edit payment amount, date or notes"
+                >
+                  <Edit3 className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Edit Entry (এডিট করুন)</span>
+                </TextureButton>
+              </div>
             )}
 
             {onVoidPayment && (
-              <button
-                onClick={() => requireAdmin(() => setShowConfirmVoid(true), 'void/delete payment entry')}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-rose-300 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold transition-colors cursor-pointer shadow-xs"
-                title="Void and delete this accidental installment entry (ভুল এন্ট্রি মুছুন)"
-              >
-                <Trash2 className="w-3.5 h-3.5 text-rose-600" />
-                <span>Void Entry (ভুল এন্ট্রি মুছুন)</span>
-              </button>
+              <div className="w-auto">
+                <TextureButton
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => requireAdmin(() => setShowConfirmVoid(true), 'void/delete payment entry')}
+                  className="w-auto"
+                  title="Void and delete this accidental installment entry (ভুল এন্ট্রি মুছুন)"
+                >
+                  <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                  <span>Void Entry (ভুল এন্ট্রি মুছুন)</span>
+                </TextureButton>
+              </div>
             )}
 
-            <button
-              onClick={() => requireAdmin(handlePrint, 'print this money receipt')}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
-            >
-              <Printer className="w-4 h-4" />
-              <span>Print Receipt</span>
-            </button>
+            <div className="w-auto">
+              <TextureButton
+                variant="emerald"
+                size="sm"
+                onClick={() => requireAdmin(handlePrint, 'print this money receipt')}
+                className="w-auto"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                <span>Print Receipt</span>
+              </TextureButton>
+            </div>
 
-            <button
-              onClick={onClose}
-              aria-label="Close receipt"
-              className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
+            <div className="w-auto">
+              <TextureButton
+                variant="icon"
+                size="icon"
+                onClick={onClose}
+                aria-label="Close receipt"
+                className="w-8 h-8"
+              >
+                <X className="w-4 h-4 text-slate-400 group-hover:text-slate-800" />
+              </TextureButton>
+            </div>
           </div>
         </div>
 
         {/* The Printable Receipt Container */}
-        <div className="p-8 sm:p-10 font-sans print:p-4 text-slate-900 bg-white" id="printable-receipt">
+        <div className="flex-1 overflow-y-auto p-6 sm:p-10 font-sans print:p-4 print:overflow-visible text-slate-900 bg-white relative" id="printable-receipt">
+          {/* Subtle Official Seal Watermark (Visible on print & screen) */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.04] print:opacity-[0.06] select-none">
+            <div className="w-80 h-80 rounded-full border-[12px] border-emerald-950 flex flex-col items-center justify-center text-center p-6 rotate-[-15deg]">
+              <span className="text-xl font-extrabold text-emerald-950">
+                Progressive Association Society
+              </span>
+              <span className="text-3xl font-black my-2 text-emerald-950">★ PAS ★</span>
+              <span className="text-sm font-bold text-emerald-950">
+                Official Receipt Seal
+              </span>
+            </div>
+          </div>
           {/* Header */}
           <div className="text-center pb-6 border-b-2 border-slate-900">
             <div className="flex justify-center mb-2.5">
@@ -138,10 +169,7 @@ export const MoneyReceiptModal: React.FC<MoneyReceiptModalProps> = ({
               Govt. Registered Multipurpose Cooperative Society &bull; Reg No: PAS/DH/2026/049
             </p>
             <p className="text-xs text-slate-500 mt-0.5">
-              Central Office: Plot #14, Sector #03, Uttara Model Town, Dhaka-1230, Bangladesh
-            </p>
-            <p className="text-[11px] text-slate-500 mt-0.5">
-              Email: info@pas-society.org.bd | Helpline: +880 1711-000000
+              Registered Office: 234/5 Sipahibag Bazar, Khilgaon, Dhaka-1214
             </p>
             <div className="mt-3 inline-block px-4 py-1 bg-slate-900 text-white font-bold text-xs rounded">
               Money Receipt (Member Copy)
@@ -224,19 +252,32 @@ export const MoneyReceiptModal: React.FC<MoneyReceiptModalProps> = ({
             </div>
           </div>
 
-          {/* Signatures */}
-          <div className="pt-12 grid grid-cols-2 gap-8 text-center text-xs font-medium text-slate-700">
+          {/* Signatures & Official Seal */}
+          <div className="pt-12 grid grid-cols-3 gap-6 text-center text-xs font-medium text-slate-700 items-end">
+            {/* 1. Depositor / Member */}
             <div>
               <div className="border-t border-slate-900 pt-2 font-bold text-slate-950 font-serif">
-                Md Fuad Bin Rahman
+                {share.memberName || 'Member'}
               </div>
-              <p className="text-[11px] text-slate-500">Authorized Officer / Cashier</p>
+              <p className="text-[11px] text-slate-500 font-sans mt-0.5">Depositor / Member (জমাকারীর স্বাক্ষর)</p>
             </div>
+
+            {/* 2. Official Seal */}
+            <div className="flex flex-col items-center">
+              <div className="w-16 h-16 rounded-full border-2 border-dashed border-emerald-700/80 print:border-slate-800 flex flex-col items-center justify-center text-emerald-800 print:text-slate-800 text-[8px] font-bold rotate-[-4deg] bg-emerald-50/50 print:bg-transparent shadow-2xs">
+                <ShieldCheck className="w-4 h-4 mb-0.5" />
+                <span>OFFICIAL SEAL</span>
+                <span>PAS DHAKA</span>
+              </div>
+              <p className="text-[10px] text-slate-400 font-sans mt-1">Official Seal (সমিতির সিল)</p>
+            </div>
+
+            {/* 3. Treasurer / Officer */}
             <div>
               <div className="border-t border-slate-900 pt-2 font-bold text-slate-950 font-serif">
                 General Secretary / Treasurer
               </div>
-              <p className="text-[11px] text-slate-500">Progressive Association Society</p>
+              <p className="text-[11px] text-slate-500 font-sans mt-0.5">Authorized Signature (কোষাধ্যক্ষ)</p>
             </div>
           </div>
 

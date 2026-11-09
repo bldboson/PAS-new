@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ShareRecord, MonthKey, ALL_MONTHS, SocietySummary } from '../types';
-import { formatTaka } from '../utils/calculations';
+import { formatTaka, getCurrentSystemMonthKey } from '../utils/calculations';
 import { Calendar, CheckCircle2, AlertCircle, Clock, CreditCard, Receipt, ArrowRight, Edit3 } from 'lucide-react';
 
 interface MonthReconciliationViewProps {
   shares: ShareRecord[];
   summary: SocietySummary;
+  currentMonth?: string;
   onOpenPaymentForShare: (share: ShareRecord, month?: MonthKey) => void;
   onOpenReceiptForShare: (share: ShareRecord, month?: MonthKey) => void;
 }
@@ -13,10 +14,19 @@ interface MonthReconciliationViewProps {
 export const MonthReconciliationView: React.FC<MonthReconciliationViewProps> = ({
   shares,
   summary,
+  currentMonth,
   onOpenPaymentForShare,
   onOpenReceiptForShare,
 }) => {
-  const [selectedMonth, setSelectedMonth] = useState<MonthKey>('Sep-26');
+  const [selectedMonth, setSelectedMonth] = useState<MonthKey>(
+    () => (currentMonth as MonthKey) || getCurrentSystemMonthKey()
+  );
+
+  useEffect(() => {
+    if (currentMonth) {
+      setSelectedMonth(currentMonth as MonthKey);
+    }
+  }, [currentMonth]);
 
   const activeShares = shares.filter((s) => !s.isClosed);
   const paidShares = activeShares.filter((s) => s.months[selectedMonth]?.status === 'paid');

@@ -238,9 +238,9 @@ export const OFFICIAL_TRUST_DEED: TrustDeedData = {
           titleBn: 'বিলম্বে পরিশোধের জরিমানা ও খেলাপি নীতি (Late Fee & Penalty Policy)',
           titleEn: 'Penalty for Late Payment and Default Policy',
           contentBn:
-            'মাসিক পরিশোধের নির্ধারিত তারিখ প্রতি মাসের ১২ তারিখ।\n• ১-১২ তারিখ: কোনো বিলম্ব ফি প্রযোজ্য নহে (নিয়মিত কিস্তি ২,৮০০/- টাকা)।\n• ১৩-১৮ তারিখ: কোনো সদস্য ১২ তারিখের মধ্যে কিস্তি জমা দিতে ব্যর্থ হইলে, সংশ্লিষ্ট মাসের ১৮ তারিখের মধ্যে মূল কিস্তির সাথে ১৫০/- (একশত পঞ্চাশ) টাকা নির্ধারিত বিলম্ব জরিমানাসহ মোট ২,৯৫২/- টাকা পরিশোধ করিতে হইবে।\n• ১৯-মাস শেষ: ১৮ তারিখের মধ্যে পরিশোধে ব্যর্থ হইলে বকেয়া পরিমাণের উপর অতিরিক্ত ১৫% সারচার্জ জরিমানা এবং মূল জরিমানা ১৫০/- টাকা আরোপিত হইবে (মোট ৩,৩৯২.৫০ টাকা)।\n• ধারাবাহিক ৩ মাস খেলাপি: কোনো সদস্য টানা তিন (৩)টি মাসিক কিস্তি পরিশোধে ব্যর্থ হইলে তাহার সদস্যপদ স্বয়ংক্রিয়ভাবে বাতিলযোগ্য হইবে এবং সদস্যপদ বাতিল নীতিমালা প্রযোজ্য হইবে।',
+            'মাসিক পরিশোধের নির্ধারিত সময়সীমা প্রতি মাসের ১৫ তারিখ।\n• ১–১৫ তারিখ: নিয়মিত কিস্তির সময় (কোনো বিলম্ব ফি প্রযোজ্য নহে — ২,৮০০/- টাকা)।\n• ১৬–২০ তারিখ: কোনো সদস্য ১৫ তারিখের মধ্যে কিস্তি জমা দিতে ব্যর্থ হইলে, সংশ্লিষ্ট মাসের ২০ তারিখের মধ্যে মূল কিস্তির সাথে ১৫০/- (একশত পঞ্চাশ) টাকা নির্ধারিত বিলম্ব জরিমানাসহ মোট ২,৯৫০/- টাকা পরিশোধ করিতে হইবে।\n• ২১–মাস শেষ: ২০ তারিখের মধ্যে পরিশোধে ব্যর্থ হইলে বকেয়া পরিমাণের উপর অতিরিক্ত ১৫% সারচার্জ জরিমানা এবং মূল জরিমানা ১৫০/- টাকা আরোপিত হইবে (মোট ৩,৩৯২.৫০ টাকা)।\n• ধারাবাহিক ৩ মাস খেলাপি: কোনো সদস্য টানা তিন (৩)টি মাসিক কিস্তি পরিশোধে ব্যর্থ হইলে তাহার সদস্যপদ স্বয়ংক্রিয়ভাবে বাতিলযোগ্য হইবে এবং সদস্যপদ বাতিল নীতিমালা প্রযোজ্য হইবে।',
           contentEn:
-            'The due date for monthly payments is the 12th of each month.\n• 1st to 12th: Regular due with no fine (BDT 2,800).\n• 13th to 18th: Fixed late penalty of BDT 150 (Total BDT 2,950).\n• 19th to Month End: Additional 15% surcharge penalty plus BDT 150 fine (Total BDT 3,392.50).\n• 3 Consecutive Defaults: If a member fails to clear 3 consecutive installments, membership is liable to automatic termination under the Cancellation Policy.',
+            'The regular payment deadline for monthly installments is the 15th of each month.\n• 1st to 15th: Regular due with no fine (BDT 2,800).\n• 16th to 20th: Fixed late penalty of BDT 150 (Total BDT 2,950).\n• 21st to Month End: Additional 15% compound surcharge penalty plus BDT 150 fine (Total BDT 3,392.50).\n• 3 Consecutive Defaults: If a member fails to clear 3 consecutive installments, membership is liable to automatic termination under the Cancellation Policy.',
         },
         {
           number: '৪.৫',
@@ -262,14 +262,14 @@ export const OFFICIAL_TRUST_DEED: TrustDeedData = {
         {
           labelBn: 'মাসিক কিস্তি',
           labelEn: 'Monthly Installment',
-          valueBn: '২,৮০০/- টাকা (প্রতি মাসের ১২ তারিখ)',
-          valueEn: 'BDT 2,800 (Due by 12th of month)',
+          valueBn: '২,৮০০/- টাকা (প্রতি মাসের ১৫ তারিখ)',
+          valueEn: 'BDT 2,800 (Due by 15th of month)',
         },
         {
           labelBn: 'বিলম্ব জরিমানা',
           labelEn: 'Late Fine Stages',
-          valueBn: '১৩-১৮ তারিখ: +১৫০/- | ১৯-শেষ: +১৫০/- + ১৫% সারচার্জ',
-          valueEn: '13-18th: +BDT 150 | Post 18th: +BDT 150 + 15%',
+          valueBn: '১৬-২০ তারিখ: +১৫০/- | ২১-শেষ: +১৫০/- + ১৫% সারচার্জ',
+          valueEn: '16-20th: +BDT 150 | Post 20th: +BDT 150 + 15%',
         },
         {
           labelBn: 'রিফান্ড ও কর্তন নীতি',

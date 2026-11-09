@@ -29,7 +29,7 @@ const rawShares: Omit<ShareRecord, 'totalDeposit' | 'dueMonths' | 'dueAmount' | 
     months: {
       'Aug-26': defaultPaid('15.08.26'),
       'Sep-26': defaultPaid('15.09.26'),
-      'Oct-26': defaultPaid('15.09.26'),
+      'Oct-26': defaultPaid('15.10.26'),
       'Nov-26': defaultUpcoming(),
       'Dec-26': defaultUpcoming(),
     },
@@ -43,7 +43,7 @@ const rawShares: Omit<ShareRecord, 'totalDeposit' | 'dueMonths' | 'dueAmount' | 
     months: {
       'Aug-26': defaultPaid('15.08.26'),
       'Sep-26': defaultPaid('15.09.26'),
-      'Oct-26': defaultPaid('15.09.26'),
+      'Oct-26': defaultPaid('15.10.26'),
       'Nov-26': defaultUpcoming(),
       'Dec-26': defaultUpcoming(),
     },
@@ -57,7 +57,7 @@ const rawShares: Omit<ShareRecord, 'totalDeposit' | 'dueMonths' | 'dueAmount' | 
     months: {
       'Aug-26': defaultPaid('15.08.26'),
       'Sep-26': defaultPaid('15.09.26'),
-      'Oct-26': defaultPaid('15.09.26'),
+      'Oct-26': defaultPaid('15.10.26'),
       'Nov-26': defaultUpcoming(),
       'Dec-26': defaultUpcoming(),
     },
@@ -73,7 +73,7 @@ const rawShares: Omit<ShareRecord, 'totalDeposit' | 'dueMonths' | 'dueAmount' | 
     months: {
       'Aug-26': defaultPaid('15.08.26'),
       'Sep-26': defaultPaid('15.09.26'),
-      'Oct-26': defaultPaid('15.09.26'),
+      'Oct-26': defaultPaid('15.10.26'),
       'Nov-26': defaultUpcoming(),
       'Dec-26': defaultUpcoming(),
     },
@@ -87,7 +87,7 @@ const rawShares: Omit<ShareRecord, 'totalDeposit' | 'dueMonths' | 'dueAmount' | 
     months: {
       'Aug-26': defaultPaid('15.08.26'),
       'Sep-26': defaultPaid('15.09.26'),
-      'Oct-26': defaultPaid('15.09.26'),
+      'Oct-26': defaultPaid('15.10.26'),
       'Nov-26': defaultUpcoming(),
       'Dec-26': defaultUpcoming(),
     },
@@ -101,7 +101,7 @@ const rawShares: Omit<ShareRecord, 'totalDeposit' | 'dueMonths' | 'dueAmount' | 
     months: {
       'Aug-26': defaultPaid('15.08.26'),
       'Sep-26': defaultPaid('15.09.26'),
-      'Oct-26': defaultPaid('15.09.26'),
+      'Oct-26': defaultPaid('15.10.26'),
       'Nov-26': defaultUpcoming(),
       'Dec-26': defaultUpcoming(),
     },
@@ -117,7 +117,7 @@ const rawShares: Omit<ShareRecord, 'totalDeposit' | 'dueMonths' | 'dueAmount' | 
     months: {
       'Aug-26': defaultPaid('15.08.26'),
       'Sep-26': defaultPaid('15.09.26'),
-      'Oct-26': defaultPaid('15.09.26'),
+      'Oct-26': defaultPaid('15.10.26'),
       'Nov-26': defaultUpcoming(),
       'Dec-26': defaultUpcoming(),
     },
@@ -131,7 +131,7 @@ const rawShares: Omit<ShareRecord, 'totalDeposit' | 'dueMonths' | 'dueAmount' | 
     months: {
       'Aug-26': defaultPaid('15.08.26'),
       'Sep-26': defaultPaid('15.09.26'),
-      'Oct-26': defaultPaid('15.09.26'),
+      'Oct-26': defaultPaid('15.10.26'),
       'Nov-26': defaultUpcoming(),
       'Dec-26': defaultUpcoming(),
     },
@@ -145,7 +145,7 @@ const rawShares: Omit<ShareRecord, 'totalDeposit' | 'dueMonths' | 'dueAmount' | 
     months: {
       'Aug-26': defaultPaid('15.08.26'),
       'Sep-26': defaultPaid('15.09.26'),
-      'Oct-26': defaultPaid('15.09.26'),
+      'Oct-26': defaultPaid('15.10.26'),
       'Nov-26': defaultUpcoming(),
       'Dec-26': defaultUpcoming(),
     },
@@ -161,7 +161,7 @@ const rawShares: Omit<ShareRecord, 'totalDeposit' | 'dueMonths' | 'dueAmount' | 
     months: {
       'Aug-26': defaultPaid('15.08.26'),
       'Sep-26': defaultPaid('15.09.26'),
-      'Oct-26': defaultPaid('15.09.26'),
+      'Oct-26': defaultPaid('15.10.26'),
       'Nov-26': defaultUpcoming(),
       'Dec-26': defaultUpcoming(),
     },
@@ -177,7 +177,7 @@ const rawShares: Omit<ShareRecord, 'totalDeposit' | 'dueMonths' | 'dueAmount' | 
     months: {
       'Aug-26': defaultPaid('15.08.26'),
       'Sep-26': defaultPaid('15.09.26'),
-      'Oct-26': defaultPaid('15.09.26'),
+      'Oct-26': defaultPaid('15.10.26'),
       'Nov-26': defaultUpcoming(),
       'Dec-26': defaultUpcoming(),
     },
@@ -193,7 +193,7 @@ const rawShares: Omit<ShareRecord, 'totalDeposit' | 'dueMonths' | 'dueAmount' | 
     months: {
       'Aug-26': defaultPaid('15.08.26'),
       'Sep-26': defaultPaid('15.09.26'),
-      'Oct-26': defaultPaid('15.09.26'),
+      'Oct-26': defaultPaid('15.10.26'),
       'Nov-26': defaultUpcoming(),
       'Dec-26': defaultUpcoming(),
     },
@@ -209,7 +209,7 @@ const rawShares: Omit<ShareRecord, 'totalDeposit' | 'dueMonths' | 'dueAmount' | 
     months: {
       'Aug-26': defaultPaid('05.08.26'),
       'Sep-26': defaultPaid('15.09.26'),
-      'Oct-26': defaultPaid('15.09.26'),
+      'Oct-26': defaultPaid('15.10.26'),
       'Nov-26': defaultUpcoming(),
       'Dec-26': defaultUpcoming(),
     },
@@ -225,7 +225,7 @@ const rawShares: Omit<ShareRecord, 'totalDeposit' | 'dueMonths' | 'dueAmount' | 
     months: {
       'Aug-26': defaultPaid('15.08.26'),
       'Sep-26': defaultPaid('15.09.26'),
-      'Oct-26': defaultPaid('15.09.26'),
+      'Oct-26': defaultPaid('15.10.26'),
       'Nov-26': defaultUpcoming(),
       'Dec-26': defaultUpcoming(),
     },
@@ -241,7 +241,7 @@ const rawShares: Omit<ShareRecord, 'totalDeposit' | 'dueMonths' | 'dueAmount' | 
     months: {
       'Aug-26': defaultPaid('15.08.26'),
       'Sep-26': defaultPaid('15.09.26'),
-      'Oct-26': defaultPaid('15.09.26'),
+      'Oct-26': defaultPaid('15.10.26'),
       'Nov-26': defaultUpcoming(),
       'Dec-26': defaultUpcoming(),
     },
@@ -257,7 +257,7 @@ const rawShares: Omit<ShareRecord, 'totalDeposit' | 'dueMonths' | 'dueAmount' | 
     months: {
       'Aug-26': defaultPaid('15.08.26'),
       'Sep-26': defaultPaid('15.09.26'),
-      'Oct-26': defaultPaid('15.09.26'),
+      'Oct-26': defaultPaid('15.10.26'),
       'Nov-26': defaultUpcoming(),
       'Dec-26': defaultUpcoming(),
     },
@@ -303,7 +303,7 @@ const rawShares: Omit<ShareRecord, 'totalDeposit' | 'dueMonths' | 'dueAmount' | 
     months: {
       'Aug-26': defaultPaid('11.08.26'),
       'Sep-26': defaultPaid('15.09.26'),
-      'Oct-26': defaultPaid('15.09.26'),
+      'Oct-26': defaultPaid('15.10.26'),
       'Nov-26': defaultUpcoming(),
       'Dec-26': defaultUpcoming(),
     },
@@ -319,7 +319,7 @@ const rawShares: Omit<ShareRecord, 'totalDeposit' | 'dueMonths' | 'dueAmount' | 
     months: {
       'Aug-26': defaultPaid('15.08.26'),
       'Sep-26': defaultPaid('15.09.26'),
-      'Oct-26': defaultPaid('15.09.26'),
+      'Oct-26': defaultPaid('15.10.26'),
       'Nov-26': defaultUpcoming(),
       'Dec-26': defaultUpcoming(),
     },
@@ -335,7 +335,7 @@ const rawShares: Omit<ShareRecord, 'totalDeposit' | 'dueMonths' | 'dueAmount' | 
     months: {
       'Aug-26': defaultPaid('11.08.26'),
       'Sep-26': defaultPaid('15.09.26'),
-      'Oct-26': defaultPaid('15.09.26'),
+      'Oct-26': defaultPaid('15.10.26'),
       'Nov-26': defaultUpcoming(),
       'Dec-26': defaultUpcoming(),
     },
@@ -351,7 +351,7 @@ const rawShares: Omit<ShareRecord, 'totalDeposit' | 'dueMonths' | 'dueAmount' | 
     months: {
       'Aug-26': defaultPaid('11.08.26'),
       'Sep-26': defaultPaid('15.09.26'),
-      'Oct-26': defaultPaid('15.09.26'),
+      'Oct-26': defaultPaid('15.10.26'),
       'Nov-26': defaultUpcoming(),
       'Dec-26': defaultUpcoming(),
     },
@@ -367,7 +367,7 @@ const rawShares: Omit<ShareRecord, 'totalDeposit' | 'dueMonths' | 'dueAmount' | 
     months: {
       'Aug-26': defaultPaid('25.07.26'),
       'Sep-26': defaultPaid('15.09.26'),
-      'Oct-26': defaultPaid('15.09.26'),
+      'Oct-26': defaultPaid('15.10.26'),
       'Nov-26': defaultUpcoming(),
       'Dec-26': defaultUpcoming(),
     },
@@ -381,7 +381,7 @@ const rawShares: Omit<ShareRecord, 'totalDeposit' | 'dueMonths' | 'dueAmount' | 
     months: {
       'Aug-26': defaultPaid('25.07.26'),
       'Sep-26': defaultPaid('15.09.26'),
-      'Oct-26': defaultPaid('15.09.26'),
+      'Oct-26': defaultPaid('15.10.26'),
       'Nov-26': defaultUpcoming(),
       'Dec-26': defaultUpcoming(),
     },
@@ -397,7 +397,7 @@ const rawShares: Omit<ShareRecord, 'totalDeposit' | 'dueMonths' | 'dueAmount' | 
     months: {
       'Aug-26': defaultPaid('15.08.26'),
       'Sep-26': defaultPaid('15.09.26'),
-      'Oct-26': defaultPaid('15.09.26'),
+      'Oct-26': defaultPaid('15.10.26'),
       'Nov-26': defaultUpcoming(),
       'Dec-26': defaultUpcoming(),
     },
@@ -429,7 +429,7 @@ const rawShares: Omit<ShareRecord, 'totalDeposit' | 'dueMonths' | 'dueAmount' | 
     months: {
       'Aug-26': defaultPaid('05.08.26'),
       'Sep-26': defaultPaid('15.09.26'),
-      'Oct-26': defaultPaid('15.09.26'),
+      'Oct-26': defaultPaid('15.10.26'),
       'Nov-26': defaultUpcoming(),
       'Dec-26': defaultUpcoming(),
     },
@@ -445,7 +445,7 @@ const rawShares: Omit<ShareRecord, 'totalDeposit' | 'dueMonths' | 'dueAmount' | 
     months: {
       'Aug-26': defaultPaid('05.08.26'),
       'Sep-26': defaultPaid('15.09.26'),
-      'Oct-26': defaultPaid('15.09.26'),
+      'Oct-26': defaultPaid('15.10.26'),
       'Nov-26': defaultUpcoming(),
       'Dec-26': defaultUpcoming(),
     },
@@ -461,7 +461,7 @@ const rawShares: Omit<ShareRecord, 'totalDeposit' | 'dueMonths' | 'dueAmount' | 
     months: {
       'Aug-26': defaultPaid('15.08.26'),
       'Sep-26': defaultPaid('15.09.26'),
-      'Oct-26': defaultPaid('15.09.26'),
+      'Oct-26': defaultPaid('15.10.26'),
       'Nov-26': defaultUpcoming(),
       'Dec-26': defaultUpcoming(),
     },
@@ -477,7 +477,7 @@ const rawShares: Omit<ShareRecord, 'totalDeposit' | 'dueMonths' | 'dueAmount' | 
     months: {
       'Aug-26': defaultPaid('15.08.26'),
       'Sep-26': defaultPaid('15.09.26'),
-      'Oct-26': defaultPaid('15.09.26'),
+      'Oct-26': defaultPaid('15.10.26'),
       'Nov-26': defaultUpcoming(),
       'Dec-26': defaultUpcoming(),
     },

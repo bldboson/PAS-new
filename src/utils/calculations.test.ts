@@ -97,41 +97,70 @@ test('calculateShareRecord calculates due share and late fee correctly', () => {
     lateFeePaid: 0,
   };
 
+  // When evaluated in October 2026:
   // On day 10 (Stage 1: 1-15th): Month 1 compounded (3392.5) + Month 2 installment (2800) = 6192.5
-  const calculatedDay10 = calculateShareRecord(share, 10);
-  assert.equal(calculatedDay10.totalDeposit, 7800); // 5000 + 2800
-  assert.equal(calculatedDay10.dueMonths, 2);
-  assert.equal(calculatedDay10.dueAmount, 5600);
-  assert.equal(calculatedDay10.lateFee, 592.5); // 3392.5 - 2800
-  assert.equal(calculatedDay10.totalDue, 6192.5);
+  const octDay10 = calculateShareRecord(share, 10, 'Oct-26');
+  assert.equal(octDay10.totalDeposit, 7800); // 5000 + 2800
+  assert.equal(octDay10.dueMonths, 2);
+  assert.equal(octDay10.dueAmount, 5600);
+  assert.equal(octDay10.lateFee, 592.5); // 3392.5 - 2800
+  assert.equal(octDay10.totalDue, 6192.5);
 
   // On day 18 (Stage 2: 16-20th): 6192.5 + 150 = 6342.5
-  const calculatedDay18 = calculateShareRecord(share, 18);
-  assert.equal(calculatedDay18.lateFee, 742.5);
-  assert.equal(calculatedDay18.totalDue, 6342.5);
+  const octDay18 = calculateShareRecord(share, 18, 'Oct-26');
+  assert.equal(octDay18.lateFee, 742.5);
+  assert.equal(octDay18.totalDue, 6342.5);
 
   // On day 25 (Stage 3: 21-End): 6342.5 + 15% = 7293.875
-  const calculatedDay25 = calculateShareRecord(share, 25);
-  assert.equal(calculatedDay25.lateFee, 1693.875);
-  assert.equal(calculatedDay25.totalDue, 7293.875);
+  const octDay25 = calculateShareRecord(share, 25, 'Oct-26');
+  assert.equal(octDay25.lateFee, 1693.875);
+  assert.equal(octDay25.totalDue, 7293.875);
+
+  // When evaluated on Day 9 of November (both Sep-26 and Oct-26 are completed past overdue months):
+  const novDay9 = calculateShareRecord(share, 9, 'Nov-26');
+  assert.equal(novDay9.dueMonths, 2);
+  assert.equal(novDay9.dueAmount, 5600);
+  assert.equal(novDay9.lateFee, 1693.875); // Sep (592.5) + Oct (1101.375)
+  assert.equal(novDay9.totalDue, 7293.875);
+
+  // When evaluated on Day 18 of November (after 15th: Nov automatically becomes 3rd due month with +150 fine):
+  const novDay18 = calculateShareRecord(share, 18, 'Nov-26');
+  assert.equal(novDay18.dueMonths, 3);
+  assert.equal(novDay18.dueAmount, 8400);
+  assert.equal(novDay18.lateFee, 1843.875); // Sep (592.5) + Oct (1101.375) + Nov fine (150)
+  assert.equal(novDay18.totalDue, 10243.875);
+
+  // When evaluated on Day 25 of November (Nov in Stage 3: +15% compound surcharge):
+  const novDay25 = calculateShareRecord(share, 25, 'Nov-26');
+  assert.equal(novDay25.dueMonths, 3);
+  assert.equal(novDay25.dueAmount, 8400);
+  assert.equal(novDay25.lateFee, 3380.456);
+  assert.equal(novDay25.totalDue, 11780.456);
 });
 
 test('calculateSocietySummary matches the dynamic timeline metrics', () => {
-  // Test on day 10 (Stage 1: 1-15th)
-  const summary = calculateSocietySummary(INITIAL_SHARES, 10);
+  // Test when evaluated on Day 10 (Stage 1)
+  const octShares = INITIAL_SHARES.map((s) => calculateShareRecord(s, 10, 'Oct-26'));
+  const summaryOct = calculateSocietySummary(octShares, 10, 'Oct-26');
 
-  assert.equal(summary.totalActiveShares, 30, 'Total active shares must be 30');
-  assert.equal(summary.totalAdmissionCollected, 160000, 'Admission total must be 160,000');
-  assert.equal(summary.totalMonthlyCollected, 235200, 'Monthly total must be 235,200');
-  assert.equal(summary.totalBankDeposit, 395200, 'Total bank deposit must be 395,200');
-  assert.equal(summary.totalDueMonths, 6, 'Total due months must be 6 (3 members x 2 months)');
-  assert.equal(summary.totalDuePrincipal, 16800, 'Total due principal must be 16,800');
-  assert.equal(summary.totalLateFeeDue, 1777.5, 'Total late fee due on day 10 is 1777.5 (3 x 592.5)');
-  assert.equal(summary.totalOutstandingDue, 18577.5, 'Total outstanding due must be 18,577.5');
-  assert.equal(summary.collectionEfficiency, 95.9, 'Collection efficiency must be 95.9%');
-  assert.equal(summary.monthStats['Aug-26'].paidAmount, 84000, 'Aug-26 collection must be 84,000');
-  assert.equal(summary.monthStats['Sep-26'].paidAmount, 75600, 'Sep-26 collection must be 75,600');
-  assert.equal(summary.monthStats['Oct-26'].paidAmount, 75600, 'Oct-26 collection must be 75,600');
+  assert.equal(summaryOct.totalActiveShares, 30, 'Total active shares must be 30');
+  assert.equal(summaryOct.totalAdmissionCollected, 160000, 'Admission total must be 160,000');
+  assert.equal(summaryOct.totalMonthlyCollected, 235200, 'Monthly total must be 235,200');
+  assert.equal(summaryOct.totalBankDeposit, 395200, 'Total bank deposit must be 395,200');
+  assert.equal(summaryOct.totalDueMonths, 6, 'Total due months must be 6 (3 members x 2 months)');
+  assert.equal(summaryOct.totalDuePrincipal, 16800, 'Total due principal must be 16,800');
+  assert.equal(summaryOct.totalLateFeeDue, 1777.5, 'Total late fee due on day 10 is 1777.5 (3 x 592.5)');
+  assert.equal(summaryOct.totalOutstandingDue, 18577.5, 'Total outstanding due must be 18,577.5');
+  assert.equal(summaryOct.collectionEfficiency, 95.9, 'Collection efficiency must be 95.9%');
+  assert.equal(summaryOct.monthStats['Aug-26'].paidAmount, 84000, 'Aug-26 collection must be 84,000');
+  assert.equal(summaryOct.monthStats['Sep-26'].paidAmount, 75600, 'Sep-26 collection must be 75,600');
+  assert.equal(summaryOct.monthStats['Oct-26'].paidAmount, 75600, 'Oct-26 collection must be 75,600');
+
+  // Test live on Day 9 (Sep and Oct completed cycles = 1,693.875 each):
+  const liveShares = INITIAL_SHARES.map((s) => calculateShareRecord(s, 9, 'Nov-26'));
+  const summaryNov = calculateSocietySummary(liveShares, 9);
+  assert.equal(summaryNov.totalLateFeeDue, 5081.625, 'Total late fee due on day 9 is 5081.625 (3 x 1693.875)');
+  assert.equal(summaryNov.totalOutstandingDue, 21881.625, 'Total outstanding due on day 9 must be 21,881.625');
 });
 
 test('formatTaka formats correctly', () => {

@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { ShareRecord, MonthKey } from '../types';
-import { formatTaka, getPenaltyStage } from '../utils/calculations';
+import { formatTaka, getPenaltyStage, isMonthPast } from '../utils/calculations';
 import { useLanguage } from '../context/LanguageContext';
 import { AlertTriangle, Copy, Check, MessageSquare, CreditCard, ExternalLink, ShieldAlert, Clock } from 'lucide-react';
+import { TextureButton } from './ui/texture-button';
 
 interface OverdueRemindersViewProps {
   shares: ShareRecord[];
@@ -23,6 +24,34 @@ export const OverdueRemindersView: React.FC<OverdueRemindersViewProps> = ({
   const totalDuePrincipal = dueShares.reduce((sum, s) => sum + s.dueAmount, 0);
   const totalLateFee = dueShares.reduce((sum, s) => sum + s.lateFee, 0);
   const totalOutstanding = totalDuePrincipal + totalLateFee;
+
+  const getWhatsAppNoticeUrl = (share: ShareRecord) => {
+    const cleanPhone = (share.phone || '').replace(/[^0-9]/g, '');
+    const fullPhone = cleanPhone.startsWith('88')
+      ? cleanPhone
+      : cleanPhone.startsWith('01')
+      ? `88${cleanPhone}`
+      : cleanPhone || '8801700000000';
+
+    const text = `আসসালামু আলাইকুম ${share.memberName},
+প্রগ্রেসিভ অ্যাসোসিয়েশন সোসাইটি (PAS)-এর মাসিক কিস্তি পরিশোধ সংক্রান্ত নোটিশ:
+• শেয়ার আইডি: ${share.id}
+• বকেয়া মাস: ${share.dueMonths}টি মাস
+• মূল বকেয়া: ${formatTaka(share.dueAmount)} (@ ৳২,৮০০/মাস)
+• বিলম্ব ফি / জরিমানা: ${formatTaka(share.lateFee)}
+• *সর্বমোট প্রদেয় বকেয়া: ${formatTaka(share.totalDue)}*
+
+নিয়মাবলী:
+১. ১–১৫ তারিখ: নিয়মিত কিস্তি (কোনো জরিমানা নেই)
+২. ১৬–২০ তারিখ: +১৫০ টাকা বিলম্ব ফি
+৩. ২১–মাস শেষ: +১৫% সারচার্জ
+
+অনুগ্রহ করে সমিতির ব্যাংক হিসাবে বা বিকাশ/নগদে বকেয়া পরিশোধ করে জমার রসিদ নিশ্চিত করুন।
+ধন্যবাদ,
+— প্রগ্রেসিভ অ্যাসোসিয়েশন সোসাইটি`;
+
+    return `https://wa.me/${fullPhone}?text=${encodeURIComponent(text)}`;
+  };
 
   const handleCopyReminder = (share: ShareRecord) => {
     const text = `Assalamu Alaikum ${share.memberName},
@@ -61,7 +90,7 @@ Thank you for your active cooperation!
                 {t('overdueConsoleTitle')}
               </h2>
               <p className="text-xs sm:text-sm text-slate-600 mt-0.5">
-                Currently <strong>{dueShares.length} shares</strong> are overdue for 2 installment cycles (Sep-26 &amp; Oct-26).
+                Currently <strong>{dueShares.length} shares</strong> have overdue installments requiring payment notice.
               </p>
             </div>
           </div>
@@ -112,10 +141,17 @@ Thank you for your active cooperation!
                 <div className="space-y-2 py-3 border-y border-slate-100 text-xs">
                   <div className="flex justify-between text-slate-600">
                     <span>{t('missedMonths')}:</span>
-                    <span className="font-semibold text-slate-800">Sep-26, Oct-26</span>
+                    <span className="font-semibold text-slate-800">
+                      {Object.keys(share.months || {})
+                        .filter((m) => {
+                          const st = share.months[m]?.status;
+                          return st === 'due' || (isMonthPast(m) && st !== 'paid');
+                        })
+                        .join(', ') || 'N/A'}
+                    </span>
                   </div>
                   <div className="flex justify-between text-slate-600">
-                    <span>{t('principal')} (2x Tk. 2,800):</span>
+                    <span>{t('principal')} ({share.dueMonths}x Tk. 2,800):</span>
                     <span className="font-bold text-slate-800 font-mono">{formatTaka(share.dueAmount)}</span>
                   </div>
                   <div className="flex justify-between text-slate-600">
@@ -130,49 +166,80 @@ Thank you for your active cooperation!
 
                 {/* WhatsApp & SMS template preview */}
                 <div className="mt-4 p-3 bg-slate-50/80 rounded-xl border border-slate-200/80 text-xs text-slate-600">
-                  <div className="flex items-center justify-between mb-1.5 font-semibold text-slate-700">
+                  <div className="flex items-center justify-between mb-2 font-semibold text-slate-700">
                     <span className="flex items-center gap-1.5">
                       <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
                       <span>{t('whatsAppNotice')}</span>
                     </span>
-                    <button
-                      onClick={() => handleCopyReminder(share)}
-                      className="text-emerald-700 hover:text-emerald-800 font-bold text-xs inline-flex items-center gap-1 cursor-pointer"
-                    >
-                      {copiedId === share.id ? (
-                        <>
-                          <Check className="w-3.5 h-3.5 text-emerald-600" />
-                          <span>Copied!</span>
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="w-3.5 h-3.5" />
-                          <span>{t('copy')}</span>
-                        </>
-                      )}
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-auto">
+                        <TextureButton
+                          variant="emerald"
+                          size="sm"
+                          asChild
+                          className="w-auto"
+                        >
+                          <a
+                            href={getWhatsAppNoticeUrl(share)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="Send notice directly on WhatsApp"
+                          >
+                            <MessageSquare className="w-3 h-3 text-white" />
+                            <span>WhatsApp পাঠান</span>
+                          </a>
+                        </TextureButton>
+                      </div>
+                      <div className="w-auto">
+                        <TextureButton
+                          variant="minimal"
+                          size="sm"
+                          onClick={() => handleCopyReminder(share)}
+                          className="w-auto"
+                          title="Copy text"
+                        >
+                          {copiedId === share.id ? (
+                            <>
+                              <Check className="w-3.5 h-3.5 text-emerald-600" />
+                              <span>Copied!</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-3.5 h-3.5" />
+                              <span>{t('copy')}</span>
+                            </>
+                          )}
+                        </TextureButton>
+                      </div>
+                    </div>
                   </div>
                   <p className="text-[11px] text-slate-500 line-clamp-2">
-                    &ldquo;Assalamu Alaikum {share.memberName}, this is a gentle payment reminder from Progressive Association Society for Share ID {share.id}...&rdquo;
+                    &ldquo;আসসালামু আলাইকুম {share.memberName}, প্রগ্রেসিভ অ্যাসোসিয়েশন সোসাইটি (PAS)-এর মাসিক কিস্তি পরিশোধ সংক্রান্ত নোটিশ...&rdquo;
                   </p>
                 </div>
               </div>
 
               {/* Action Buttons */}
               <div className="p-4 bg-slate-50/70 border-t border-slate-100 flex flex-col sm:flex-row gap-2">
-                <button
-                  onClick={() => onClearFullDue(share.id, false)}
-                  className="flex-1 px-3 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold shadow-xs transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 cursor-pointer text-center"
-                >
-                  {t('clearDue')} ({formatTaka(share.totalDue)})
-                </button>
-                <button
-                  onClick={() => onClearFullDue(share.id, true)}
-                  className="px-3 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 cursor-pointer text-center"
-                  title="Clear principal installments and waive late fee fine"
-                >
-                  {t('waiveLateFee')}
-                </button>
+                <div className="flex-1">
+                  <TextureButton
+                    variant="destructive"
+                    size="default"
+                    onClick={() => onClearFullDue(share.id, false)}
+                  >
+                    {t('clearDue')} ({formatTaka(share.totalDue)})
+                  </TextureButton>
+                </div>
+                <div className="flex-initial sm:w-auto">
+                  <TextureButton
+                    variant="secondary"
+                    size="default"
+                    onClick={() => onClearFullDue(share.id, true)}
+                    title="Clear principal installments and waive late fee fine"
+                  >
+                    {t('waiveLateFee')}
+                  </TextureButton>
+                </div>
               </div>
             </div>
           ))}

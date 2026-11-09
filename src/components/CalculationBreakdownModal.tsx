@@ -3,10 +3,11 @@ import { ShareRecord } from '../types';
 import {
   calculateCompoundDue,
   formatTaka,
-  getPenaltyStage,
   MONTHLY_INSTALLMENT_AMOUNT,
   STAGE_2_FINE,
   STAGE_3_PERCENTAGE,
+  getCurrentSystemMonthKey,
+  isMonthPast,
 } from '../utils/calculations';
 import { useLanguage } from '../context/LanguageContext';
 import {
@@ -14,7 +15,6 @@ import {
   Calculator,
   Calendar,
   AlertCircle,
-  Clock,
   ArrowRight,
   Copy,
   Check,
@@ -24,11 +24,13 @@ import {
   ChevronRight,
   ShieldAlert,
 } from 'lucide-react';
+import { TextureButton } from './ui/texture-button';
 
 interface CalculationBreakdownModalProps {
   isOpen: boolean;
   onClose: () => void;
   share: ShareRecord | null;
+  currentMonth?: string;
   onOpenPaymentForShare?: (share: ShareRecord) => void;
 }
 
@@ -36,35 +38,33 @@ export const CalculationBreakdownModal: React.FC<CalculationBreakdownModalProps>
   isOpen,
   onClose,
   share,
+  currentMonth: propCurrentMonth,
   onOpenPaymentForShare,
 }) => {
   const { t } = useLanguage();
+  const currentMonth = propCurrentMonth || getCurrentSystemMonthKey();
   const todayRealDay = new Date().getDate();
-  const [selectedDay, setSelectedDay] = useState<number>(todayRealDay);
   const [copied, setCopied] = useState(false);
 
   if (!isOpen || !share) return null;
 
-  const dueMonthKeys = Object.keys(share.months || {}).filter(
-    (m) => share.months[m]?.status === 'due'
-  );
+  const dueMonthKeys = Object.keys(share.months || {}).filter((m) => {
+    const payment = share.months[m];
+    if (!payment || payment.status === 'paid') return false;
+    const isPast = isMonthPast(m, currentMonth);
+    const isCurrentPastDeadline = m === currentMonth && todayRealDay > 15;
+    return payment.status === 'due' || isPast || isCurrentPastDeadline;
+  });
   const dueMonthsCount = dueMonthKeys.length || share.dueMonths || 0;
 
-  // Compute for selected day
-  const compound = calculateCompoundDue(dueMonthsCount, selectedDay, dueMonthKeys);
+  // Compute live due for today
+  const compound = calculateCompoundDue(dueMonthsCount, todayRealDay, dueMonthKeys, currentMonth);
   const currentStage = compound.stage;
-
-  // Pre-calculate dues for all 3 stages for the interactive stepper
-  const stage1Preview = calculateCompoundDue(dueMonthsCount, 10, dueMonthKeys);
-  const stage2Preview = calculateCompoundDue(dueMonthsCount, 18, dueMonthKeys);
-  const stage3Preview = calculateCompoundDue(dueMonthsCount, 25, dueMonthKeys);
-
-  const realTodayStage = getPenaltyStage(todayRealDay).stage;
 
   const handleCopyNotice = () => {
     const text = `*Progressive Association Society — Due & Late Fee Notice*
 Member: ${share.memberName} (${share.id})
-Status as of: Day ${selectedDay} of month (${currentStage.name})
+Status as of: Day ${todayRealDay} of month (${currentStage.name})
 
 • Overdue Months: ${dueMonthsCount} month(s) [${dueMonthKeys.join(', ') || 'N/A'}]
 • Base Principal: ${formatTaka(compound.principalDue)}
@@ -111,13 +111,17 @@ Please clear your dues promptly via Bank Deposit or bKash.`;
               </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            aria-label="Close dialog"
-            className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="w-auto">
+            <TextureButton
+              variant="icon"
+              size="icon"
+              onClick={onClose}
+              aria-label="Close dialog"
+              className="w-8 h-8"
+            >
+              <X className="w-4 h-4 text-slate-400 group-hover:text-white" />
+            </TextureButton>
+          </div>
         </div>
 
         {/* Modal Body */}
@@ -174,117 +178,9 @@ Please clear your dues promptly via Bank Deposit or bKash.`;
                   <span>{currentStage.badge}</span>
                 </span>
                 <span className="block text-[11px] text-slate-500 mt-1">
-                  {t('evaluatingDay')} <strong>{selectedDay}</strong>
+                  {t('evaluatingDay')} <strong>{todayRealDay}</strong>
                 </span>
               </div>
-            </div>
-          </div>
-
-          {/* Interactive 3-Stage Timeline Stepper */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5 text-emerald-600" />
-                <span>{t('policyTimeline')}</span>
-              </span>
-              {selectedDay !== todayRealDay && (
-                <button
-                  type="button"
-                  onClick={() => setSelectedDay(todayRealDay)}
-                  className="text-xs font-semibold text-emerald-700 hover:underline cursor-pointer"
-                >
-                  {t('resetToToday')} (Day {todayRealDay})
-                </button>
-              )}
-            </div>
-
-            <div className="grid grid-cols-3 gap-2">
-              {/* Stage 1: 1-15th */}
-              <button
-                type="button"
-                onClick={() => setSelectedDay(10)}
-                className={`p-3 rounded-xl border text-left transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 cursor-pointer relative ${
-                  currentStage.stage === 1
-                    ? 'bg-emerald-50/90 border-emerald-400 ring-2 ring-emerald-300/60 shadow-xs'
-                    : 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-600'
-                }`}
-              >
-                {realTodayStage === 1 && (
-                  <span className="absolute -top-2 right-2 text-[9px] font-semibold px-1.5 py-0.2 rounded-full bg-emerald-600 text-white">
-                    Today
-                  </span>
-                )}
-                <span className="text-[10px] font-semibold text-slate-500 block">
-                  1st to 15th
-                </span>
-                <span className="font-bold text-xs text-slate-900 block mt-0.5">
-                  {t('stage1Name')}
-                </span>
-                <span className="text-sm font-extrabold font-mono text-emerald-700 block mt-1">
-                  {formatTaka(stage1Preview.totalDue)}
-                </span>
-                <span className="text-[10px] text-slate-500 block mt-0.5">
-                  {t('stage1Desc')}
-                </span>
-              </button>
-
-              {/* Stage 2: 16-20th */}
-              <button
-                type="button"
-                onClick={() => setSelectedDay(18)}
-                className={`p-3 rounded-xl border text-left transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 cursor-pointer relative ${
-                  currentStage.stage === 2
-                    ? 'bg-amber-50/90 border-amber-400 ring-2 ring-amber-300/60 shadow-xs'
-                    : 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-600'
-                }`}
-              >
-                {realTodayStage === 2 && (
-                  <span className="absolute -top-2 right-2 text-[9px] font-semibold px-1.5 py-0.2 rounded-full bg-amber-600 text-white">
-                    Today
-                  </span>
-                )}
-                <span className="text-[10px] font-semibold text-slate-500 block">
-                  16th to 20th
-                </span>
-                <span className="font-bold text-xs text-slate-900 block mt-0.5">
-                  {t('stage2Name')}
-                </span>
-                <span className="text-sm font-extrabold font-mono text-amber-700 block mt-1">
-                  {formatTaka(stage2Preview.totalDue)}
-                </span>
-                <span className="text-[10px] text-slate-500 block mt-0.5">
-                  {t('stage2Desc')}
-                </span>
-              </button>
-
-              {/* Stage 3: 21st-End */}
-              <button
-                type="button"
-                onClick={() => setSelectedDay(25)}
-                className={`p-3 rounded-xl border text-left transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 cursor-pointer relative ${
-                  currentStage.stage === 3
-                    ? 'bg-rose-50/90 border-rose-400 ring-2 ring-rose-300/60 shadow-xs'
-                    : 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-600'
-                }`}
-              >
-                {realTodayStage === 3 && (
-                  <span className="absolute -top-2 right-2 text-[9px] font-semibold px-1.5 py-0.2 rounded-full bg-rose-600 text-white">
-                    Today
-                  </span>
-                )}
-                <span className="text-[10px] font-semibold text-slate-500 block">
-                  21st to End
-                </span>
-                <span className="font-bold text-xs text-slate-900 block mt-0.5">
-                  {t('stage3Name')}
-                </span>
-                <span className="text-sm font-extrabold font-mono text-rose-700 block mt-1">
-                  {formatTaka(stage3Preview.totalDue)}
-                </span>
-                <span className="text-[10px] text-slate-500 block mt-0.5">
-                  {t('stage3Desc')}
-                </span>
-              </button>
             </div>
           </div>
 
@@ -329,7 +225,7 @@ Please clear your dues promptly via Bank Deposit or bKash.`;
                           </span>
                         ) : (
                           <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-200 text-amber-900">
-                            Active Cycle (Day {selectedDay})
+                            Active Cycle (Day {todayRealDay})
                           </span>
                         )}
                       </div>
@@ -374,7 +270,7 @@ Please clear your dues promptly via Bank Deposit or bKash.`;
                           <span className="font-sans">
                             Late Fine (1st to 15th):
                           </span>
-                          <span>৳0 (No fine)</span>
+                          <span>Tk. 0 (No fine)</span>
                         </div>
                       )}
 
@@ -407,44 +303,53 @@ Please clear your dues promptly via Bank Deposit or bKash.`;
 
         {/* Footer */}
         <div className="px-5 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between shrink-0">
-          <button
-            type="button"
-            onClick={handleCopyNotice}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
-          >
-            {copied ? (
-              <>
-                <Check className="w-3.5 h-3.5 text-emerald-600" />
-                <span className="text-emerald-700">{t('copied')}</span>
-              </>
-            ) : (
-              <>
-                <Copy className="w-3.5 h-3.5 text-slate-500" />
-                <span>{t('copyNotice')}</span>
-              </>
-            )}
-          </button>
+          <div className="w-auto">
+            <TextureButton
+              variant="minimal"
+              size="sm"
+              onClick={handleCopyNotice}
+              className="w-auto"
+            >
+              {copied ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-emerald-600" />
+                  <span className="text-emerald-700">{t('copied')}</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-3.5 h-3.5 text-slate-500" />
+                  <span>{t('copyNotice')}</span>
+                </>
+              )}
+            </TextureButton>
+          </div>
 
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-1.5 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-100 text-xs font-semibold cursor-pointer"
-            >
-              {t('close')}
-            </button>
-            {onOpenPaymentForShare && dueMonthsCount > 0 && (
-              <button
-                type="button"
-                onClick={() => {
-                  onClose();
-                  onOpenPaymentForShare(share);
-                }}
-                className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-2xs transition-colors cursor-pointer"
+            <div className="w-auto">
+              <TextureButton
+                variant="secondary"
+                size="sm"
+                onClick={onClose}
+                className="w-auto"
               >
-                <CreditCard className="w-3.5 h-3.5" />
-                <span>{t('collectPayment')}</span>
-              </button>
+                {t('close')}
+              </TextureButton>
+            </div>
+            {onOpenPaymentForShare && dueMonthsCount > 0 && (
+              <div className="w-auto">
+                <TextureButton
+                  variant="emerald"
+                  size="sm"
+                  onClick={() => {
+                    onClose();
+                    onOpenPaymentForShare(share);
+                  }}
+                  className="w-auto"
+                >
+                  <CreditCard className="w-3.5 h-3.5" />
+                  <span>{t('collectPayment')}</span>
+                </TextureButton>
+              </div>
             )}
           </div>
         </div>

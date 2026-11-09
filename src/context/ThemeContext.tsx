@@ -1,10 +1,11 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
-export type AppTheme = 'classic' | 'forest-light' | 'forest-dark';
+export type AppTheme = 'forest-light' | 'forest-dark';
 
 interface ThemeContextType {
   theme: AppTheme;
   setTheme: (theme: AppTheme) => void;
+  toggleTheme: () => void;
   isDark: boolean;
 }
 
@@ -15,14 +16,17 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [theme, setThemeState] = useState<AppTheme>(() => {
     try {
-      const saved = localStorage.getItem(THEME_STORAGE_KEY) as AppTheme;
-      if (saved === 'classic' || saved === 'forest-light' || saved === 'forest-dark') {
-        return saved;
+      const saved = localStorage.getItem(THEME_STORAGE_KEY);
+      if (saved === 'forest-dark') {
+        return 'forest-dark';
+      }
+      if (saved === 'forest-light') {
+        return 'forest-light';
       }
     } catch {
       // ignore
     }
-    return 'classic'; // Default to existing theme!
+    return 'forest-light'; // Default to Light (Classic removed)
   });
 
   const setTheme = (newTheme: AppTheme) => {
@@ -34,25 +38,27 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
+  const toggleTheme = () => {
+    setTheme(theme === 'forest-dark' ? 'forest-light' : 'forest-dark');
+  };
+
   useEffect(() => {
     const root = document.documentElement;
     root.classList.remove('theme-classic', 'theme-forest-light', 'theme-forest-dark', 'dark');
 
     root.setAttribute('data-theme', theme);
 
-    if (theme === 'classic') {
-      root.classList.add('theme-classic');
-    } else if (theme === 'forest-light') {
-      root.classList.add('theme-forest-light');
-    } else if (theme === 'forest-dark') {
+    if (theme === 'forest-dark') {
       root.classList.add('theme-forest-dark', 'dark');
+    } else {
+      root.classList.add('theme-forest-light');
     }
   }, [theme]);
 
   const isDark = theme === 'forest-dark';
 
   return (
-    <ThemeContext.Provider value={{ theme, setTheme, isDark }}>
+    <ThemeContext.Provider value={{ theme, setTheme, toggleTheme, isDark }}>
       {children}
     </ThemeContext.Provider>
   );
@@ -62,8 +68,9 @@ export const useTheme = (): ThemeContextType => {
   const context = useContext(ThemeContext);
   if (!context) {
     return {
-      theme: 'classic',
+      theme: 'forest-light',
       setTheme: () => {},
+      toggleTheme: () => {},
       isDark: false,
     };
   }

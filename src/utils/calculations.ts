@@ -24,9 +24,9 @@ export function getPenaltyStage(day: number = new Date().getDate()): PenaltyStag
     return {
       stage: 1,
       name: 'Stage 1: Regular Due (No Fine)',
-      badge: '1–15th: Regular (Tk 2,800)',
+      badge: '1–15th: Regular (No Fine)',
       colorClass: 'emerald',
-      description: 'Monthly installment of Tk. 2,800 applies without penalty fine.',
+      description: 'Monthly installment applies without penalty fine.',
       nextDeadline: '15th of the month (before Tk. 150 fine applies)',
     };
   }
@@ -75,6 +75,26 @@ export interface CompoundDueDetails {
 }
 
 /**
+ * Compares two month keys chronologically (e.g., 'Oct-26' < 'Nov-26').
+ * Returns true if monthKey is strictly in the past relative to currentMonthKey.
+ */
+export function isMonthPast(monthKey: string, currentMonthKey: string = getCurrentSystemMonthKey()): boolean {
+  if (!monthKey || !currentMonthKey) return false;
+  const [m1, y1] = monthKey.split('-');
+  const [m2, y2] = currentMonthKey.split('-');
+  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const year1 = 2000 + parseInt(y1 || '26', 10);
+  const year2 = 2000 + parseInt(y2 || '26', 10);
+  const monthIdx1 = MONTHS.indexOf(m1);
+  const monthIdx2 = MONTHS.indexOf(m2);
+
+  if (monthIdx1 === -1 || monthIdx2 === -1) return false;
+  if (year1 < year2) return true;
+  if (year1 > year2) return false;
+  return monthIdx1 < monthIdx2;
+}
+
+/**
  * Computes compound overdue balance across chronological months:
  * Month 1:
  *   - Day 1-15: Tk. 2,800
@@ -89,7 +109,8 @@ export interface CompoundDueDetails {
 export function calculateCompoundDue(
   dueMonthsCount: number,
   dayOfMonth: number = new Date().getDate(),
-  monthNames?: string[]
+  monthNames?: string[],
+  currentMonthKey: string = getCurrentSystemMonthKey()
 ): CompoundDueDetails {
   const safeDay = Math.max(1, Math.min(31, Math.round(dayOfMonth)));
   const stage = getPenaltyStage(safeDay);
@@ -111,7 +132,16 @@ export function calculateCompoundDue(
   const principalDue = dueMonthsCount * MONTHLY_INSTALLMENT_AMOUNT;
 
   for (let i = 1; i <= dueMonthsCount; i++) {
-    const isPastMonth = i < dueMonthsCount;
+    const monthName = monthNames && monthNames[i - 1] ? monthNames[i - 1] : undefined;
+
+    // In sequential compounding:
+    // A month is a completed past cycle if:
+    // 1. monthName is provided and is strictly before currentMonthKey (isMonthPast)
+    // 2. OR no monthName is provided and i < dueMonthsCount (prior cycle in overdue chain)
+    const isPastMonth = monthName
+      ? isMonthPast(monthName, currentMonthKey)
+      : i < dueMonthsCount;
+
     const openingBalance = runningBalance;
     const installment = MONTHLY_INSTALLMENT_AMOUNT;
     const subtotal = openingBalance + installment;
@@ -128,7 +158,7 @@ export function calculateCompoundDue(
 
       steps.push({
         monthIndex: i,
-        monthName: monthNames && monthNames[i - 1] ? monthNames[i - 1] : `Overdue Month ${i}`,
+        monthName: monthName || `Overdue Month ${i}`,
         isPastMonth: true,
         openingBalance,
         installment,
@@ -152,7 +182,7 @@ export function calculateCompoundDue(
 
       steps.push({
         monthIndex: i,
-        monthName: monthNames && monthNames[i - 1] ? monthNames[i - 1] : `Current Month`,
+        monthName: monthName || `Current Month`,
         isPastMonth: false,
         openingBalance,
         installment,
@@ -184,7 +214,8 @@ export function calculateCompoundDue(
  */
 export function calculateShareRecord(
   share: ShareRecord,
-  dayOfMonth: number = new Date().getDate()
+  dayOfMonth: number = new Date().getDate(),
+  currentMonthKey: string = getCurrentSystemMonthKey()
 ): ShareRecord {
   if (share.isClosed) {
     return {
@@ -206,17 +237,25 @@ export function calculateShareRecord(
   const monthKeys = Object.keys(share.months || {});
   for (const m of monthKeys) {
     const payment = share.months[m];
-    if (payment) {
-      if (payment.status === 'paid') {
-        totalMonthlyPaid += payment.amount || 0;
-      } else if (payment.status === 'due') {
+    if (!payment) continue;
+
+    if (payment.status === 'paid') {
+      totalMonthlyPaid += payment.amount || 0;
+    } else {
+      // Auto-due logic: any past month that ended without payment,
+      // or current month whose 15th deadline has passed, is automatically due.
+      const isPastMonth = isMonthPast(m, currentMonthKey);
+      const isCurrentPastDeadline = m === currentMonthKey && dayOfMonth > 15;
+      const isDue = payment.status === 'due' || isPastMonth || isCurrentPastDeadline;
+
+      if (isDue) {
         dueMonths += 1;
         dueMonthKeys.push(m);
       }
     }
   }
 
-  const compound = calculateCompoundDue(dueMonths, dayOfMonth, dueMonthKeys);
+  const compound = calculateCompoundDue(dueMonths, dayOfMonth, dueMonthKeys, currentMonthKey);
   const lateFeePaid = share.lateFeePaid || 0;
   const lateFee = Math.max(0, compound.penaltyDue);
   const dueAmount = compound.principalDue;
@@ -235,11 +274,52 @@ export function calculateShareRecord(
 }
 
 /**
+ * Automatically syncs a share record's months with real-world calendar deadlines:
+ * 1. Any past month (before currentMonthKey) that is NOT 'paid' automatically becomes 'due'.
+ * 2. Current month (currentMonthKey) automatically becomes 'due' as soon as its deadline (15th of month) passes.
+ * 3. Then calculates exact principal, late fees, deposits, and total outstanding due.
+ */
+export function syncShareRecordWithCalendar(
+  share: ShareRecord,
+  dayOfMonth: number = new Date().getDate(),
+  currentMonthKey: string = getCurrentSystemMonthKey()
+): ShareRecord {
+  if (share.isClosed) {
+    return calculateShareRecord(share, dayOfMonth, currentMonthKey);
+  }
+
+  const updatedMonths = { ...(share.months || {}) };
+  let hasChanges = false;
+  const isPastDeadline = dayOfMonth > 15;
+
+  for (const m of Object.keys(updatedMonths)) {
+    const payment = updatedMonths[m];
+    if (!payment || payment.status === 'paid') continue;
+
+    if (isMonthPast(m, currentMonthKey)) {
+      if (payment.status !== 'due') {
+        updatedMonths[m] = { ...payment, status: 'due', amount: payment.amount || MONTHLY_INSTALLMENT_AMOUNT };
+        hasChanges = true;
+      }
+    } else if (m === currentMonthKey) {
+      if (isPastDeadline && payment.status !== 'due') {
+        updatedMonths[m] = { ...payment, status: 'due', amount: payment.amount || MONTHLY_INSTALLMENT_AMOUNT };
+        hasChanges = true;
+      }
+    }
+  }
+
+  const baseShare = hasChanges ? { ...share, months: updatedMonths } : share;
+  return calculateShareRecord(baseShare, dayOfMonth, currentMonthKey);
+}
+
+/**
  * Summarizes the entire society dataset matching the Excel dashboard
  */
 export function calculateSocietySummary(
   shares: ShareRecord[],
-  dayOfMonth: number = new Date().getDate()
+  dayOfMonth: number = new Date().getDate(),
+  currentMonthKey: string = getCurrentSystemMonthKey()
 ): SocietySummary {
   let totalActiveShares = 0;
   let totalShareIds = 0;
@@ -254,7 +334,7 @@ export function calculateSocietySummary(
   const uniqueMemberNames = new Set<string>();
 
   for (const rawShare of shares) {
-    const share = calculateShareRecord(rawShare, dayOfMonth);
+    const share = calculateShareRecord(rawShare, dayOfMonth, currentMonthKey);
 
     // Count IDs
     if (share.id.includes(',')) {

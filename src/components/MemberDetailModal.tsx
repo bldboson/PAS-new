@@ -20,8 +20,10 @@ import {
   CheckCircle2,
   Clock,
   Calculator,
+  MessageSquare,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { TextureButton } from './ui/texture-button';
 
 interface MemberDetailModalProps {
   isOpen: boolean;
@@ -83,6 +85,27 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
   const phone = memberShares.find((s) => s?.phone)?.phone || '+880 1711-000000';
   const address = memberShares.find((s) => s?.address)?.address || DEFAULT_LOCATIONS[0];
   const nid = memberShares.find((s) => s?.nid)?.nid || '1985269345678';
+
+  const getMemberWhatsAppUrl = () => {
+    const cleanPhone = (phone || '').replace(/[^0-9]/g, '');
+    const fullPhone = cleanPhone.startsWith('88')
+      ? cleanPhone
+      : cleanPhone.startsWith('01')
+      ? `88${cleanPhone}`
+      : cleanPhone || '8801700000000';
+
+    const text = `আসসালামু আলাইকুম ${memberName},
+প্রগ্রেসিভ অ্যাসোসিয়েশন সোসাইটি (PAS)-এর সদস্য হিসাব বিবরণী:
+• বকেয়া পরিমাণ: ${formatTaka(totalDue)} (${totalDueMonths}টি মাস)
+• মূল বকেয়া: ${formatTaka(totalPrincipalDue)}
+• বিলম্ব জরিমানা: ${formatTaka(totalLateFee)}
+
+দয়া করে সমিতির ব্যাংক হিসাবে বা বিকাশ/নগদে বকেয়া পরিশোধ করে জমার রসিদ নিশ্চিত করুন।
+ধন্যবাদ,
+— প্রগ্রেসিভ অ্যাসোসিয়েশন সোসাইটি`;
+
+    return `https://wa.me/${fullPhone}?text=${encodeURIComponent(text)}`;
+  };
 
   // State for inline KYC editing
   const [kycForm, setKycForm] = useState({
@@ -149,12 +172,12 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
       onClick={(e) => {
         if (e.target === e.currentTarget && !shareToDelete) onClose();
       }}
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/75 overflow-y-auto print:static print:p-0 print:bg-white print:overflow-visible print:block print-modal"
+      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 bg-slate-950/75 print:static print:p-0 print:bg-white print:overflow-visible print:block print-modal"
     >
-      <div className="relative w-full max-w-4xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-6 print:m-0 print:border-none print:shadow-none print:max-w-none print:w-full print:block">
+      <div className="relative w-full max-w-4xl max-h-[92vh] flex flex-col bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden print:m-0 print:border-none print:shadow-none print:max-w-none print:w-full print:max-h-none print:block">
         
         {/* Top Control Bar (Hidden on print) */}
-        <div className="flex items-center justify-between px-6 py-3 border-b border-slate-200 bg-slate-900 text-white print:hidden">
+        <div className="shrink-0 flex items-center justify-between px-5 sm:px-6 py-3 border-b border-slate-200 bg-slate-900 text-white print:hidden">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-white p-0.5 flex items-center justify-center shrink-0">
               <img src="/logo.png" alt="PAS Logo" className="w-full h-full object-contain" />
@@ -168,40 +191,49 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
 
           <div className="flex items-center gap-2">
             {!isEditingKyc && onUpdateMemberDetails && (
-              <button
-                type="button"
-                onClick={handleStartEdit}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition-colors cursor-pointer"
-                title="Edit member KYC information"
-              >
-                <Edit2 className="w-3.5 h-3.5 text-blue-400" />
-                <span>Edit KYC</span>
-              </button>
+              <div className="w-auto">
+                <TextureButton
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleStartEdit}
+                  className="w-auto"
+                  title="Edit member KYC information"
+                >
+                  <Edit2 className="w-3.5 h-3.5 text-blue-400" />
+                  <span>Edit KYC</span>
+                </TextureButton>
+              </div>
             )}
 
-            <button
-              type="button"
-              onClick={handlePrint}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer"
-              title="Print Member Card"
-            >
-              <Printer className="w-3.5 h-3.5" />
-              <span>Print Card</span>
-            </button>
+            <div className="w-auto">
+              <TextureButton
+                variant="emerald"
+                size="sm"
+                onClick={handlePrint}
+                className="w-auto"
+                title="Print Member Statement"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                <span>Print Statement</span>
+              </TextureButton>
+            </div>
 
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label="Close modal"
-              className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors cursor-pointer ml-1"
-            >
-              <X className="w-5 h-5" />
-            </button>
+            <div className="w-auto ml-1">
+              <TextureButton
+                variant="icon"
+                size="icon"
+                onClick={onClose}
+                aria-label="Close modal"
+                className="w-8 h-8"
+              >
+                <X className="w-4 h-4 text-slate-400 group-hover:text-white" />
+              </TextureButton>
+            </div>
           </div>
         </div>
 
         {/* The Printable Portfolio Sheet Container */}
-        <div className="p-6 sm:p-7 font-sans print:p-2 bg-white text-slate-900" id="printable-member-portfolio">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-7 font-sans print:p-2 print:overflow-visible bg-white text-slate-900" id="printable-member-portfolio">
           
           {/* Header */}
           <div className="border-b border-slate-200 pb-4 mb-5">
@@ -215,14 +247,14 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
                     PROGRESSIVE ASSOCIATION SOCIETY
                   </h1>
                   <p className="text-xs text-slate-500">
-                    Reg: PAS/DH/2026/049 &bull; Uttara, Dhaka-1230
+                    Reg: PAS/DH/2026/049 &bull; 234/5 Sipahibag Bazar, Khilgaon, Dhaka-1214
                   </p>
                 </div>
               </div>
 
               <div className="text-center sm:text-right shrink-0">
                 <span className="inline-block px-3 py-1 bg-slate-900 text-white font-bold text-xs rounded">
-                  Member Card
+                  Member Account Statement
                 </span>
                 <p className="text-[11px] font-mono text-slate-400 mt-1">
                   Date: {new Date().toLocaleDateString('en-GB')}
@@ -433,14 +465,26 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
               </div>
 
               {totalDue > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setShowBreakdownModal(true)}
-                  className="mt-2 py-1 px-2 rounded-md bg-white hover:bg-rose-100 border border-rose-300 text-rose-800 text-[11px] font-bold inline-flex items-center justify-center gap-1 shadow-2xs transition-colors cursor-pointer"
-                >
-                  <Calculator className="w-3.5 h-3.5 text-rose-600" />
-                  <span>View Calculation Breakdown</span>
-                </button>
+                <div className="mt-2 flex flex-col sm:flex-row gap-1.5 print:hidden">
+                  <button
+                    type="button"
+                    onClick={() => setShowBreakdownModal(true)}
+                    className="py-1 px-2 rounded-md bg-white hover:bg-rose-100 border border-rose-300 text-rose-800 text-[11px] font-bold inline-flex items-center justify-center gap-1 shadow-2xs transition-colors cursor-pointer"
+                  >
+                    <Calculator className="w-3.5 h-3.5 text-rose-600" />
+                    <span>View Breakdown</span>
+                  </button>
+                  <a
+                    href={getMemberWhatsAppUrl()}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="py-1 px-2 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold inline-flex items-center justify-center gap-1 shadow-2xs transition-colors cursor-pointer text-center"
+                    title="Send due reminder directly via WhatsApp"
+                  >
+                    <MessageSquare className="w-3.5 h-3.5" />
+                    <span>WhatsApp নোটিশ</span>
+                  </a>
+                </div>
               )}
             </div>
           </div>
@@ -642,18 +686,21 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = ({
         </div>
 
         {/* Modal Footer (Hidden on Print) */}
-        <div className="px-6 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between print:hidden">
+        <div className="shrink-0 px-6 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between print:hidden">
           <p className="text-xs text-slate-500 flex items-center gap-1.5">
             <ShieldCheck className="w-4 h-4 text-emerald-600" />
             <span>Progressive Association Society</span>
           </p>
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-800 font-semibold text-xs transition-colors cursor-pointer"
-          >
-            Close
-          </button>
+          <div className="w-auto">
+            <TextureButton
+              variant="secondary"
+              size="sm"
+              onClick={onClose}
+              className="w-auto"
+            >
+              Close
+            </TextureButton>
+          </div>
         </div>
       </div>
 

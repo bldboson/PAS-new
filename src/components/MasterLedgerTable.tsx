@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ShareRecord, MonthKey, ALL_MONTHS, SocietySummary } from '../types';
-import { formatTaka, getPenaltyStage } from '../utils/calculations';
+import { formatTaka, getPenaltyStage, isMonthPast } from '../utils/calculations';
 import { CalculationBreakdownModal } from './CalculationBreakdownModal';
 import {
   Receipt,
@@ -131,7 +131,7 @@ export const MasterLedgerTable: React.FC<MasterLedgerTableProps> = ({
       </div>
 
       {/* Main Table Container */}
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto overscroll-x-contain [scrollbar-width:thin]">
         <table className="w-full text-left text-xs border-collapse">
           {/* Multi-tier Table Head */}
           <thead className="bg-slate-100 text-slate-700 border-b border-slate-300 font-semibold select-none">
@@ -146,7 +146,7 @@ export const MasterLedgerTable: React.FC<MasterLedgerTableProps> = ({
               <th rowSpan={2} className="px-2 py-2.5 border-r border-slate-300 text-center min-w-[70px]">
                 {t('colShareId')}
               </th>
-              <th rowSpan={2} className="px-2 py-2.5 border-r border-slate-300 text-right min-w-[75px] bg-slate-50">
+              <th rowSpan={2} className="px-2 py-2.5 border-r-2 border-slate-300 text-right min-w-[75px] bg-slate-50">
                 {t('colAdmissionFee')}
               </th>
 
@@ -157,10 +157,10 @@ export const MasterLedgerTable: React.FC<MasterLedgerTableProps> = ({
                   <th
                     key={m}
                     colSpan={2}
-                    className={`px-1.5 py-1.5 border-r border-slate-300 text-center font-bold transition-colors ${
+                    className={`px-1.5 py-1.5 text-center font-bold transition-colors ${
                       isCurrent
-                        ? 'bg-emerald-600 text-white'
-                        : 'bg-slate-200/70 text-slate-800'
+                        ? 'bg-emerald-600 text-white border-r-2 border-emerald-700'
+                        : 'bg-slate-200/80 text-slate-800 border-r-2 border-slate-300'
                     }`}
                   >
                     <div className="flex items-center justify-center gap-1">
@@ -200,16 +200,27 @@ export const MasterLedgerTable: React.FC<MasterLedgerTableProps> = ({
 
             {/* Sub-row for Date & Amount */}
             <tr className="border-t border-slate-200 text-xs text-slate-600 bg-slate-50">
-              {activeMonths.map((m) => (
-                <React.Fragment key={`${m}-sub`}>
-                  <th className="px-2 py-1.5 border-r border-slate-200 text-center font-medium w-16">
-                    {t('colDate')}
-                  </th>
-                  <th className="px-2 py-1.5 border-r border-slate-300 text-right font-medium w-16">
-                    {t('colAmount')}
-                  </th>
-                </React.Fragment>
-              ))}
+              {activeMonths.map((m) => {
+                const isCurrent = m === currentMonth;
+                return (
+                  <React.Fragment key={`${m}-sub`}>
+                    <th
+                      className={`px-2 py-1.5 border-r border-slate-200/60 text-center font-medium w-16 ${
+                        isCurrent ? 'bg-emerald-50/80 text-emerald-950 font-semibold' : ''
+                      }`}
+                    >
+                      {t('colDate')}
+                    </th>
+                    <th
+                      className={`px-2 py-1.5 border-r-2 ${
+                        isCurrent ? 'border-emerald-500/50 bg-emerald-50/80 text-emerald-950 font-semibold' : 'border-slate-300'
+                      } text-right font-medium w-16`}
+                    >
+                      {t('colAmount')}
+                    </th>
+                  </React.Fragment>
+                );
+              })}
             </tr>
           </thead>
 
@@ -222,26 +233,22 @@ export const MasterLedgerTable: React.FC<MasterLedgerTableProps> = ({
               return (
                 <tr
                   key={`${share.id}-${idx}`}
-                  className={`hover:bg-blue-50/40 transition-colors ${
+                  className={`transition-colors ${
                     isClosed
-                      ? 'bg-slate-100/60 text-slate-500'
+                      ? 'row-closed bg-slate-100/60 text-slate-500'
                       : hasDue
-                      ? 'bg-amber-50/30'
-                      : idx % 2 === 1
-                      ? 'bg-slate-50/30'
-                      : 'bg-white'
+                      ? 'row-has-due bg-amber-50/40 text-slate-900 hover:bg-amber-100/40'
+                      : 'bg-white hover:bg-slate-50/70'
                   }`}
                 >
                   {/* SL */}
                   <td
-                    className={`px-2 py-2 border-r border-slate-200 text-center font-sans text-slate-500 sticky left-0 z-10 ${
+                    className={`px-2 py-2 border-r border-slate-200 text-center font-sans sticky left-0 z-10 ${
                       isClosed
-                        ? 'bg-slate-100'
+                        ? 'bg-slate-100 text-slate-400'
                         : hasDue
-                        ? 'bg-amber-50'
-                        : idx % 2 === 1
-                        ? 'bg-slate-50'
-                        : 'bg-white'
+                        ? 'bg-amber-50 text-amber-900 font-bold'
+                        : 'bg-white text-slate-500'
                     }`}
                   >
                     {share.sl || '-'}
@@ -249,14 +256,12 @@ export const MasterLedgerTable: React.FC<MasterLedgerTableProps> = ({
 
                   {/* Member Name */}
                   <td
-                    className={`px-3 py-2 border-r border-slate-200 font-sans font-bold text-sm text-slate-900 sticky left-10 z-10 ${
+                    className={`px-3 py-2 border-r border-slate-200 font-sans font-bold text-sm sticky left-10 z-10 ${
                       isClosed
-                        ? 'bg-slate-100'
+                        ? 'bg-slate-100 text-slate-400'
                         : hasDue
-                        ? 'bg-amber-50'
-                        : idx % 2 === 1
-                        ? 'bg-slate-50'
-                        : 'bg-white'
+                        ? 'bg-amber-50 text-slate-950 font-bold'
+                        : 'bg-white text-slate-900'
                     }`}
                   >
                     <div className="flex items-center justify-between gap-1 group">
@@ -284,42 +289,55 @@ export const MasterLedgerTable: React.FC<MasterLedgerTableProps> = ({
                   {/* Share ID */}
                   <td className="px-3 py-2.5 border-r border-slate-200 text-center">
                     <span
-                      className={`inline-block px-1.5 py-0.5 rounded text-[11px] font-bold ${
+                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold ${
                         isClosed
                           ? 'bg-slate-200 text-slate-600'
                           : hasDue
-                          ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                          ? 'bg-amber-100 text-amber-900 border border-amber-400/90 shadow-2xs font-extrabold ring-1 ring-amber-300/40'
                           : 'bg-slate-100 text-slate-700'
                       }`}
                     >
-                      {share.id}
+                      {hasDue && <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />}
+                      <span>{share.id}</span>
                     </span>
                   </td>
 
                   {/* Admission Fee */}
-                  <td className="px-3 py-2.5 border-r border-slate-200 text-right font-medium">
+                  <td className="px-3 py-2.5 border-r-2 border-slate-300 text-right font-medium">
                     {share.admissionFee.toLocaleString('en-IN')}
                   </td>
 
                   {/* Monthly Payments (Dynamically rendered based on activeMonths) */}
                   {activeMonths.map((m) => {
                     const pay = share.months?.[m] || { status: 'upcoming', amount: 2800 };
+                    const isCurrentMonth = m === currentMonth;
+                    const monthDividerClass = isCurrentMonth ? 'border-r-2 border-emerald-400/80' : 'border-r-2 border-slate-300';
+
                     if (isClosed) {
                       return (
                         <React.Fragment key={m}>
-                          <td className="px-2 py-2 border-r border-slate-200 text-center text-slate-400">-</td>
-                          <td className="px-2 py-2 border-r border-slate-300 text-right text-slate-400">-</td>
+                          <td className="px-2 py-2 border-r border-slate-200/60 text-center text-slate-400">-</td>
+                          <td className={`px-2 py-2 ${monthDividerClass} text-right text-slate-400`}>-</td>
                         </React.Fragment>
                       );
                     }
 
-                    if (pay.status === 'paid') {
+                    const isPaid = pay.status === 'paid';
+                    const isPast = isMonthPast(m, currentMonth);
+                    const isCurrentPastDeadline = m === currentMonth && new Date().getDate() > 15;
+                    const isDue = !isPaid && (pay.status === 'due' || isPast || isCurrentPastDeadline);
+
+                    if (isPaid) {
                       return (
                         <React.Fragment key={m}>
-                          <td className="px-2 py-2 border-r border-slate-200 text-center text-slate-600 text-xs font-mono">
+                          <td className={`px-2 py-2 border-r border-slate-200/60 text-center text-slate-600 text-xs font-mono ${
+                            isCurrentMonth ? 'bg-emerald-50/25' : ''
+                          }`}>
                             {pay.date || '-'}
                           </td>
-                          <td className="px-2 py-2 border-r border-slate-300 text-right font-medium text-emerald-800 bg-emerald-50/20">
+                          <td className={`px-2 py-2 ${monthDividerClass} text-right font-medium text-emerald-800 ${
+                            isCurrentMonth ? 'bg-emerald-50/50 font-bold' : 'bg-emerald-50/20'
+                          }`}>
                             <button
                               onClick={() => onOpenReceiptForShare(share, m)}
                               className="hover:underline hover:text-emerald-600 cursor-pointer font-semibold"
@@ -330,13 +348,13 @@ export const MasterLedgerTable: React.FC<MasterLedgerTableProps> = ({
                           </td>
                         </React.Fragment>
                       );
-                    } else if (pay.status === 'due') {
+                    } else if (isDue) {
                       return (
                         <React.Fragment key={m}>
-                          <td className="px-2 py-2 border-r border-slate-200 text-center text-rose-600 font-semibold bg-rose-50/60 font-sans text-xs">
+                          <td className="px-2 py-2 border-r border-slate-200/60 text-center text-rose-600 font-semibold bg-rose-50/60 font-sans text-xs">
                             Due
                           </td>
-                          <td className="px-2 py-2 border-r border-slate-300 text-right bg-rose-50/60 font-semibold text-rose-700">
+                          <td className={`px-2 py-2 ${monthDividerClass} text-right bg-rose-50/60 font-semibold text-rose-700`}>
                             <button
                               onClick={() => onOpenPaymentForShare(share, m)}
                               className="px-2 py-0.5 rounded bg-rose-100 hover:bg-rose-200 text-rose-800 text-xs font-sans font-bold inline-flex items-center gap-0.5 cursor-pointer"
@@ -348,17 +366,37 @@ export const MasterLedgerTable: React.FC<MasterLedgerTableProps> = ({
                         </React.Fragment>
                       );
                     } else {
-                      // Upcoming
+                      // Upcoming or Current Unpaid
                       return (
                         <React.Fragment key={m}>
-                          <td className="px-2 py-2 border-r border-slate-200 text-center text-slate-400">-</td>
-                          <td className="px-2 py-2 border-r border-slate-300 text-right text-slate-400">
+                          <td className={`px-2 py-2 border-r border-slate-200/60 text-center text-slate-400 ${
+                            isCurrentMonth ? 'bg-emerald-50/25' : ''
+                          }`}>
+                            {isCurrentMonth ? (
+                              <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-100/70 text-emerald-800 border border-emerald-300">
+                                Current
+                              </span>
+                            ) : (
+                              '-'
+                            )}
+                          </td>
+                          <td className={`px-2 py-2 ${monthDividerClass} text-right text-slate-400 ${
+                            isCurrentMonth ? 'bg-emerald-50/25' : ''
+                          }`}>
                             <button
                               onClick={() => onOpenPaymentForShare(share, m)}
-                              className="text-slate-400 hover:text-slate-700 hover:underline cursor-pointer"
-                              title={`Advance payment for ${share.id} (${m})`}
+                              className={`hover:underline cursor-pointer ${
+                                isCurrentMonth
+                                  ? 'font-extrabold text-emerald-800 hover:text-emerald-950'
+                                  : 'text-slate-400 hover:text-slate-700'
+                              }`}
+                              title={
+                                isCurrentMonth
+                                  ? `Record ${m} installment for ${share.id}`
+                                  : `Advance payment for ${share.id} (${m})`
+                              }
                             >
-                              -
+                              {isCurrentMonth ? '2,800' : '-'}
                             </button>
                           </td>
                         </React.Fragment>
@@ -457,7 +495,7 @@ export const MasterLedgerTable: React.FC<MasterLedgerTableProps> = ({
                         {t('payBtn')}
                       </button>
                       <button
-                        onClick={() => onOpenReceiptForShare(share, activeMonths[0] as MonthKey || 'Oct-26')}
+                        onClick={() => onOpenReceiptForShare(share, (currentMonth as MonthKey) || (activeMonths[0] as MonthKey) || 'Nov-26')}
                         className="p-1 rounded-lg text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 transition-colors cursor-pointer"
                         title="View Official Money Receipt"
                       >
@@ -488,20 +526,25 @@ export const MasterLedgerTable: React.FC<MasterLedgerTableProps> = ({
               <td className="px-3 py-3 border-r border-slate-800 text-center font-sans text-xs text-slate-300 bg-slate-900">
                 {summary.totalShareIds} IDs
               </td>
-              <td className="px-3 py-3 border-r border-slate-800 text-right text-emerald-300 bg-slate-900">
+              <td className="px-3 py-3 border-r-2 border-slate-700 text-right text-emerald-300 bg-slate-900">
                 {summary.totalAdmissionCollected.toLocaleString('en-IN')}
               </td>
 
               {/* Monthly totals for visible activeMonths */}
               {activeMonths.map((m) => {
+                const isCurrent = m === currentMonth;
                 const stat = summary.monthStats?.[m] || { paidShares: 0, paidAmount: 0 };
                 return (
                   <React.Fragment key={`${m}-total`}>
-                    <td className="px-2 py-2 border-r border-slate-800 text-center text-slate-400 text-xs">
-                      {stat.paidShares > 0 ? `${stat.paidShares} Paid` : '-'}
+                    <td className={`px-2 py-2 border-r border-slate-800/80 text-center text-slate-400 text-[11px] ${
+                      isCurrent ? 'bg-emerald-950/70 text-emerald-300 font-semibold' : ''
+                    }`}>
+                      {stat.paidShares > 0 ? `${stat.paidShares} Paid` : '—'}
                     </td>
-                    <td className="px-2 py-2 border-r border-slate-800 text-right text-emerald-300 text-xs">
-                      {stat.paidAmount > 0 ? stat.paidAmount.toLocaleString('en-IN') : '-'}
+                    <td className={`px-2 py-2 border-r-2 ${
+                      isCurrent ? 'border-emerald-600 bg-emerald-950/70' : 'border-slate-700'
+                    } text-right text-emerald-300 text-[11px]`}>
+                      {stat.paidAmount > 0 ? stat.paidAmount.toLocaleString('en-IN') : '—'}
                     </td>
                   </React.Fragment>
                 );
@@ -598,6 +641,7 @@ export const MasterLedgerTable: React.FC<MasterLedgerTableProps> = ({
         isOpen={!!breakdownShare}
         onClose={() => setBreakdownShare(null)}
         share={breakdownShare}
+        currentMonth={currentMonth}
         onOpenPaymentForShare={onOpenPaymentForShare}
       />
     </div>

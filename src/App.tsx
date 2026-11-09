@@ -1,7 +1,13 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { ShareRecord, MonthKey, SocietySummary } from './types';
 import { INITIAL_SHARES } from './data/initialData';
-import { calculateShareRecord, calculateSocietySummary, formatTaka, getCurrentSystemMonthKey } from './utils/calculations';
+import {
+  calculateShareRecord,
+  calculateSocietySummary,
+  formatTaka,
+  getCurrentSystemMonthKey,
+  syncShareRecordWithCalendar,
+} from './utils/calculations';
 import { Navbar } from './components/Navbar';
 import { SummaryCards } from './components/SummaryCards';
 import { MasterLedgerTable } from './components/MasterLedgerTable';
@@ -57,12 +63,12 @@ export default function App() {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed: ShareRecord[] = JSON.parse(saved);
-        return parsed.map((s) => calculateShareRecord(s));
+        return parsed.map((s) => syncShareRecordWithCalendar(s));
       }
     } catch (e) {
       console.error('Failed to parse saved shares:', e);
     }
-    return INITIAL_SHARES;
+    return INITIAL_SHARES.map((s) => syncShareRecordWithCalendar(s));
   });
 
   const [activeTab, setActiveTab] = useState<'ledger' | 'cards' | 'months' | 'defaulters' | 'members' | 'deeds'>('ledger');
@@ -115,6 +121,7 @@ export default function App() {
     // Ensure live month is included in configured and active months
     setAllConfiguredMonths((prev) => (prev.includes(live) ? prev : [...prev, live]));
     setActiveMonths((prev) => (prev.includes(live) ? prev : [...prev, live]));
+    setShares((prev) => prev.map((s) => syncShareRecordWithCalendar(s, new Date().getDate(), live)));
 
     const checkMonthRollover = () => {
       const currentLive = getCurrentSystemMonthKey();
@@ -125,6 +132,7 @@ export default function App() {
           } catch (e) {}
           setAllConfiguredMonths((p) => (p.includes(currentLive) ? p : [...p, currentLive]));
           setActiveMonths((p) => (p.includes(currentLive) ? p : [...p, currentLive]));
+          setShares((sprev) => sprev.map((s) => syncShareRecordWithCalendar(s, new Date().getDate(), currentLive)));
           return currentLive;
         }
         return prev;
@@ -173,7 +181,11 @@ export default function App() {
 
   // Overall society summary
   const summary: SocietySummary = useMemo(() => {
-    return calculateSocietySummary(shares);
+    return calculateSocietySummary(shares, new Date().getDate(), currentMonth);
+  }, [shares, currentMonth]);
+
+  const overdueSharesCount = useMemo(() => {
+    return shares.filter((s) => !s.isClosed && s.dueMonths > 0).length;
   }, [shares]);
 
   // Filtered shares
@@ -198,6 +210,70 @@ export default function App() {
   }, [shares, statusFilter, searchQuery]);
 
   const { requireAdmin } = useAuth();
+
+  // Initialize Google Auth Listener
+  useEffect(() => {
+    const unsubscribe = initAuth(
+      (user, token) => {
+        setCurrentUser(user);
+        // If a sheet ID is saved in localStorage, load its metadata
+        const savedSheetId = localStorage.getItem(SHEET_ID_KEY);
+        if (savedSheetId) {
+          fetchSpreadsheetMetadata(savedSheetId, token)
+            .then((meta) => {
+              setConnectedSheet(meta);
+              setLastSyncedAt(new Date());
+            })
+            .catch((err) => {
+              console.warn('Could not verify saved spreadsheet:', err);
+            });
+        }
+      },
+      () => {
+        setCurrentUser(null);
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
+
+  // Toggle body class when a modal is open so print stylesheet isolates the modal perfectly
+  useEffect(() => {
+    if (isReceiptOpen || !!selectedMemberForDetail) {
+      document.body.classList.add('print-modal-active');
+    } else {
+      document.body.classList.remove('print-modal-active');
+    }
+    return () => {
+      document.body.classList.remove('print-modal-active');
+    };
+  }, [isReceiptOpen, selectedMemberForDetail]);
+
+  // Auto-sync trigger on local changes
+  const triggerAutoSyncIfEnabled = useCallback(
+    async (updatedShares: ShareRecord[]) => {
+      if (!autoSyncEnabled || !connectedSheet) return;
+      try {
+        const token = await getAccessToken();
+        if (!token) return;
+        setIsSyncing(true);
+        const newSummary = calculateSocietySummary(updatedShares);
+        await pushToGoogleSheet(
+          connectedSheet.id,
+          connectedSheet.sheetName,
+          updatedShares,
+          newSummary,
+          token
+        );
+        setLastSyncedAt(new Date());
+      } catch (err) {
+        console.warn('Auto-sync to Google Sheet failed:', err);
+      } finally {
+        setIsSyncing(false);
+      }
+    },
+    [autoSyncEnabled, connectedSheet]
+  );
 
   // Routing Handlers
   const handleOpenPaymentForShare = (share: ShareRecord, month?: MonthKey) => {
@@ -232,31 +308,6 @@ export default function App() {
     setSelectedMonthForReceipt(targetMonth);
     setIsReceiptOpen(true);
   };
-
-  // Initialize Google Auth Listener
-  useEffect(() => {
-    const unsubscribe = initAuth(
-      (user, token) => {
-        setCurrentUser(user);
-        // If a sheet ID is saved in localStorage, load its metadata
-        const savedSheetId = localStorage.getItem(SHEET_ID_KEY);
-        if (savedSheetId) {
-          fetchSpreadsheetMetadata(savedSheetId, token)
-            .then((meta) => {
-              setConnectedSheet(meta);
-              setLastSyncedAt(new Date());
-            })
-            .catch((err) => {
-              console.warn('Could not verify saved spreadsheet:', err);
-            });
-        }
-      },
-      () => {
-        setCurrentUser(null);
-      }
-    );
-    return () => unsubscribe();
-  }, []);
 
   // Google Auth Handlers
   const handleGoogleSignIn = async () => {
@@ -373,32 +424,6 @@ export default function App() {
     showToast('Google Sheet unlinked from dashboard.');
   };
 
-  // Auto-sync trigger on local changes
-  const triggerAutoSyncIfEnabled = useCallback(
-    async (updatedShares: ShareRecord[]) => {
-      if (!autoSyncEnabled || !connectedSheet) return;
-      try {
-        const token = await getAccessToken();
-        if (!token) return;
-        setIsSyncing(true);
-        const newSummary = calculateSocietySummary(updatedShares);
-        await pushToGoogleSheet(
-          connectedSheet.id,
-          connectedSheet.sheetName,
-          updatedShares,
-          newSummary,
-          token
-        );
-        setLastSyncedAt(new Date());
-      } catch (err) {
-        console.warn('Auto-sync to Google Sheet failed:', err);
-      } finally {
-        setIsSyncing(false);
-      }
-    },
-    [autoSyncEnabled, connectedSheet]
-  );
-
   // Payment Handlers
   const handleSavePayment = ({
     shareId,
@@ -463,15 +488,21 @@ export default function App() {
   };
 
   const executeClearFullDue = (shareId: string, waiveLateFee: boolean) => {
+    const today = new Date();
+    const dd = String(today.getDate()).padStart(2, '0');
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const yy = String(today.getFullYear()).slice(-2);
+    const todayFormatted = `${dd}.${mm}.${yy}`;
+
     const updated = shares.map((s) => {
       if (s.id !== shareId) return s;
 
       const updatedMonths = { ...s.months };
-      for (const m of ['Sep-26', 'Oct-26'] as MonthKey[]) {
+      for (const m of Object.keys(updatedMonths)) {
         if (updatedMonths[m]?.status === 'due') {
           updatedMonths[m] = {
             status: 'paid',
-            date: '17.10.26',
+            date: todayFormatted,
             amount: 2800,
             paymentMethod: 'Bank Deposit',
           };
@@ -517,10 +548,14 @@ export default function App() {
     targetStatus?: 'due' | 'upcoming'
   ) => {
     requireAdmin(() => {
-      // Intelligently default to 'due' for past billing months (Aug, Sep, Oct) and 'upcoming' for future months
+      // Intelligently determine if month is in the past (< currentMonth) or upcoming (>= currentMonth)
+      const allChronological = [...allConfiguredMonths];
+      const curIdx = allChronological.indexOf(currentMonth);
+      const targetIdx = allChronological.indexOf(month);
+      const isPast = curIdx !== -1 && targetIdx !== -1 ? targetIdx < curIdx : false;
+
       const defaultStatus: 'due' | 'upcoming' =
-        targetStatus ||
-        (month === 'Nov-26' || month === 'Dec-26' ? 'upcoming' : 'due');
+        targetStatus || (isPast ? 'due' : 'upcoming');
 
       const updated = shares.map((s) => {
         if (s.id !== shareId) return s;
@@ -747,17 +782,48 @@ export default function App() {
     window.print();
   };
 
-  // Toggle body class when a modal is open so print stylesheet isolates the modal perfectly
-  useEffect(() => {
-    if (isReceiptOpen || !!selectedMemberForDetail) {
-      document.body.classList.add('print-modal-active');
-    } else {
-      document.body.classList.remove('print-modal-active');
-    }
-    return () => {
-      document.body.classList.remove('print-modal-active');
+  const handleExportJSON = () => {
+    const backup = {
+      society: 'Progressive Association Society',
+      version: '1.0',
+      exportTimestamp: new Date().toISOString(),
+      totalShares: shares.length,
+      shares,
     };
-  }, [isReceiptOpen, selectedMemberForDetail]);
+    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `PAS_Society_Backup_${new Date().toISOString().slice(0, 10)}.json`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast('Offline JSON backup exported successfully!');
+  };
+
+  const handleImportJSON = (file: File) => {
+    requireAdmin(() => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const content = e.target?.result as string;
+          const parsed = JSON.parse(content);
+          if (!parsed.shares || !Array.isArray(parsed.shares)) {
+            throw new Error('Invalid JSON backup file: shares data missing.');
+          }
+          const restoredShares = parsed.shares.map((s: ShareRecord) =>
+            calculateShareRecord(s, new Date().getDate(), currentMonth)
+          );
+          setShares(restoredShares);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(restoredShares));
+          showToast(`Successfully restored ${restoredShares.length} shares from JSON backup!`);
+        } catch (err: any) {
+          alert('Failed to import JSON backup: ' + (err?.message || 'Unknown error'));
+        }
+      };
+      reader.readAsText(file);
+    }, 'restore data from JSON backup');
+  };
 
   return (
     <div className="min-h-screen bg-slate-100/70 text-slate-900 font-sans antialiased selection:bg-emerald-500 selection:text-white">
@@ -780,6 +846,8 @@ export default function App() {
         onOpenRecordPayment={() => handleOpenPaymentForShare(shares[0])}
         onOpenAddShare={() => requireAdmin(() => setIsAddShareOpen(true), 'add a new share')}
         onExportCSV={() => requireAdmin(handleExportCSV, 'export ledger to CSV')}
+        onExportJSON={() => requireAdmin(handleExportJSON, 'export JSON backup')}
+        onImportJSON={handleImportJSON}
         onPrint={() => requireAdmin(handlePrint, 'print dashboard report')}
         onResetData={() => requireAdmin(() => setIsResetConfirmOpen(true), 'reset ledger data')}
         isSheetConnected={!!connectedSheet}
@@ -809,75 +877,82 @@ export default function App() {
           <div className="flex items-center flex-wrap gap-1 bg-slate-100/90 p-1 rounded-xl border border-slate-200/80 shadow-2xs">
             <button
               onClick={() => setActiveTab('ledger')}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors duration-150 cursor-pointer ${
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors duration-150 cursor-pointer focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:outline-none active:scale-95 ${
                 activeTab === 'ledger'
-                  ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                  ? 'bg-emerald-600 text-white shadow-xs ring-1 ring-emerald-700/40'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
               }`}
             >
-              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+              <FileSpreadsheet className={`w-3.5 h-3.5 ${activeTab === 'ledger' ? 'text-white' : 'text-emerald-600'}`} />
               <span>{t('tabMasterLedger')}</span>
             </button>
 
             <button
               onClick={() => setActiveTab('cards')}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors duration-150 cursor-pointer ${
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors duration-150 cursor-pointer focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none active:scale-95 ${
                 activeTab === 'cards'
-                  ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                  ? 'bg-blue-600 text-white shadow-xs ring-1 ring-blue-700/40'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
               }`}
             >
-              <Users className="w-3.5 h-3.5 text-blue-600" />
+              <Users className={`w-3.5 h-3.5 ${activeTab === 'cards' ? 'text-white' : 'text-blue-600'}`} />
               <span>{t('tabMemberCards')}</span>
             </button>
 
             <button
               onClick={() => setActiveTab('months')}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors duration-150 cursor-pointer ${
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors duration-150 cursor-pointer focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:outline-none active:scale-95 ${
                 activeTab === 'months'
-                  ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                  ? 'bg-teal-600 text-white shadow-xs ring-1 ring-teal-700/40'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
               }`}
             >
-              <CalendarDays className="w-3.5 h-3.5 text-teal-600" />
+              <CalendarDays className={`w-3.5 h-3.5 ${activeTab === 'months' ? 'text-white' : 'text-teal-600'}`} />
               <span>{t('tabMonthBreakdown')}</span>
             </button>
 
             <button
               onClick={() => setActiveTab('defaulters')}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors duration-150 cursor-pointer ${
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors duration-150 cursor-pointer focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:outline-none active:scale-95 ${
                 activeTab === 'defaulters'
-                  ? 'bg-white text-rose-700 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                  ? 'bg-rose-600 text-white shadow-xs ring-1 ring-rose-700/40'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
               }`}
             >
-              <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
-              <span>{t('tabOverdue')} ({summary.totalDueMonths > 0 ? `${summary.totalDueMonths / 2} Shares` : '0'})</span>
+              <AlertTriangle className={`w-3.5 h-3.5 ${activeTab === 'defaulters' ? 'text-white' : 'text-rose-600'}`} />
+              <span>{t('tabOverdue')}</span>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold ${
+                activeTab === 'defaulters' ? 'bg-rose-800 text-white' : 'bg-rose-100 text-rose-700'
+              }`}>
+                {overdueSharesCount > 0 ? `${overdueSharesCount}` : '0'}
+              </span>
             </button>
 
             <button
               onClick={() => setActiveTab('members')}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors duration-150 cursor-pointer ${
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors duration-150 cursor-pointer focus-visible:ring-2 focus-visible:ring-slate-500 focus-visible:outline-none active:scale-95 ${
                 activeTab === 'members'
-                  ? 'bg-white text-emerald-800 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                  ? 'bg-slate-900 text-white shadow-xs ring-1 ring-slate-950'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
               }`}
             >
-              <Contact className="w-3.5 h-3.5 text-emerald-600" />
+              <Contact className={`w-3.5 h-3.5 ${activeTab === 'members' ? 'text-emerald-400' : 'text-slate-700'}`} />
               <span>{t('tabMembersDirectory')}</span>
             </button>
 
             <button
               onClick={() => setActiveTab('deeds')}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors duration-150 cursor-pointer ${
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors duration-150 cursor-pointer focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:outline-none active:scale-95 ${
                 activeTab === 'deeds'
-                  ? 'bg-white text-emerald-800 shadow-xs ring-1 ring-emerald-500/30'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                  ? 'bg-amber-600 text-white shadow-xs ring-1 ring-amber-700/40'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
               }`}
             >
-              <Scale className="w-3.5 h-3.5 text-emerald-600" />
+              <Scale className={`w-3.5 h-3.5 ${activeTab === 'deeds' ? 'text-white' : 'text-amber-600'}`} />
               <span>{t('tabLandDeeds')}</span>
-              <span className="px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-mono font-bold">
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold ${
+                activeTab === 'deeds' ? 'bg-amber-800 text-white' : 'bg-amber-100 text-amber-800'
+              }`}>
                 {language === 'bn' ? 'অফিসিয়াল' : 'Official'}
               </span>
             </button>
@@ -986,6 +1061,7 @@ export default function App() {
           <MonthReconciliationView
             shares={shares}
             summary={summary}
+            currentMonth={currentMonth}
             onOpenPaymentForShare={handleOpenPaymentForShare}
             onOpenReceiptForShare={handleOpenReceiptForShare}
           />
@@ -1023,6 +1099,7 @@ export default function App() {
         shares={shares}
         initialShare={selectedShareForPayment}
         initialMonth={selectedMonthForPayment}
+        currentMonth={currentMonth}
         onSavePayment={handleSavePayment}
         onRevertPayment={handleRevertPayment}
       />

@@ -77,7 +77,7 @@ export function formatSharesForSheet(
     'Total Deposit',
     'Due Months',
     'Due Amount',
-    'Late Fee (10%)',
+    'Late Fee / Fine',
     'Total Due',
     'Late Fee Paid',
   ]);

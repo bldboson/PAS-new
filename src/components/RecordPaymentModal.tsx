@@ -4,6 +4,8 @@ import {
   formatTaka,
   calculateCompoundDue,
   MONTHLY_INSTALLMENT_AMOUNT,
+  getCurrentSystemMonthKey,
+  isMonthPast,
 } from '../utils/calculations';
 import { useLanguage } from '../context/LanguageContext';
 import {
@@ -12,6 +14,7 @@ import {
   Check,
   Calendar,
 } from 'lucide-react';
+import { TextureButton } from './ui/texture-button';
 
 const getTodayIsoDate = (): string => {
   const now = new Date();
@@ -48,6 +51,7 @@ interface RecordPaymentModalProps {
   shares: ShareRecord[];
   initialShare?: ShareRecord | null;
   initialMonth?: MonthKey;
+  currentMonth?: string;
   onSavePayment: (payload: {
     shareId: string;
     month?: MonthKey;
@@ -68,9 +72,11 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
   shares,
   initialShare,
   initialMonth,
+  currentMonth: propCurrentMonth,
   onSavePayment,
 }) => {
   const { t, language } = useLanguage();
+  const currentMonthKey = propCurrentMonth || getCurrentSystemMonthKey();
   const activeShares = shares.filter((s) => !s.isClosed);
 
   const [selectedShareId, setSelectedShareId] = useState<string>(activeShares[0]?.id || 'PAS-01');
@@ -122,14 +128,21 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
   // Find due months and upcoming months
   const dueMonths = useMemo(() => {
     if (!currentShare?.months) return [];
-    return baseMonths.filter((m) => currentShare.months[m]?.status === 'due');
-  }, [currentShare, baseMonths]);
+    const day = new Date().getDate();
+    return baseMonths.filter((m) => {
+      const monthData = currentShare.months[m];
+      if (!monthData || monthData.status === 'paid') return false;
+      const isPast = isMonthPast(m, currentMonthKey);
+      const isCurrentPastDeadline = m === currentMonthKey && day > 15;
+      return monthData.status === 'due' || isPast || isCurrentPastDeadline;
+    });
+  }, [currentShare, baseMonths, currentMonthKey]);
 
-  // Check if current month (Oct-26) is unpaid
+  // Check if current month is unpaid
   const isCurrentUnpaid = useMemo(() => {
-    const currentStatus = currentShare?.months['Oct-26']?.status;
+    const currentStatus = currentShare?.months[currentMonthKey]?.status;
     return currentStatus !== 'paid';
-  }, [currentShare]);
+  }, [currentShare, currentMonthKey]);
 
   // Initialize selection when modal opens or share changes
   useEffect(() => {
@@ -163,6 +176,56 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
       setCustomAmount(null);
     }
   }, [isOpen, initialShare, initialMonth]);
+
+  // Calculation helpers
+  const selectedCount = selectedMonths.length;
+  const baseInstallmentAmount = selectedCount * MONTHLY_INSTALLMENT_AMOUNT;
+
+  // Filter ONLY the selected months that are actually OVERDUE
+  const selectedDueMonths = useMemo(() => {
+    const day = new Date().getDate();
+    return selectedMonths.filter((m) => {
+      const monthData = currentShare?.months[m];
+      if (!monthData || monthData.status === 'paid') return false;
+      const isPast = isMonthPast(m, currentMonthKey);
+      const isCurrentPastDeadline = m === currentMonthKey && day > 15;
+      return monthData.status === 'due' || isPast || isCurrentPastDeadline;
+    });
+  }, [selectedMonths, currentShare, currentMonthKey]);
+
+  const selectedDueCount = selectedDueMonths.length;
+  const hasSelectedDueMonths = selectedDueCount > 0;
+  const currentDayOfMonth = new Date().getDate();
+
+  // Dynamically calculate compound due strictly for the overdue months
+  // Current month (before 15th) and Advance months NEVER carry late fees!
+  const dynamicCompound = useMemo(() => {
+    if (!hasSelectedDueMonths || selectedDueCount === 0) {
+      return {
+        totalDue: baseInstallmentAmount,
+        penaltyDue: 0,
+        principalDue: baseInstallmentAmount,
+      };
+    }
+
+    const dueResult = calculateCompoundDue(selectedDueCount, currentDayOfMonth, selectedDueMonths, currentMonthKey);
+    const nonDueCount = selectedCount - selectedDueCount;
+    const nonDueAmount = nonDueCount * MONTHLY_INSTALLMENT_AMOUNT;
+
+    return {
+      totalDue: dueResult.totalDue + nonDueAmount,
+      penaltyDue: dueResult.penaltyDue,
+      principalDue: baseInstallmentAmount,
+    };
+  }, [hasSelectedDueMonths, selectedDueCount, selectedCount, currentDayOfMonth, selectedDueMonths, currentMonthKey, baseInstallmentAmount]);
+
+  const activeLateFee = hasSelectedDueMonths && includeLateFee ? dynamicCompound.penaltyDue : 0;
+  const autoCalculatedTotal = hasSelectedDueMonths
+    ? includeLateFee
+      ? dynamicCompound.totalDue
+      : baseInstallmentAmount
+    : baseInstallmentAmount;
+  const displayAmount = customAmount !== null ? customAmount : autoCalculatedTotal;
 
   // When selectedShareId changes from dropdown
   const handleShareChange = (newId: string) => {
@@ -210,10 +273,9 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
 
   const handleSelectCurrentMonth = () => {
     setCustomAmount(null);
-    const current = 'Oct-26';
     if (isCurrentUnpaid) {
-      setSelectedMonths([current]);
-      setIncludeLateFee(currentShare.months[current]?.status === 'due');
+      setSelectedMonths([currentMonthKey]);
+      setIncludeLateFee(currentShare.months[currentMonthKey]?.status === 'due');
     }
   };
 
@@ -235,35 +297,6 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
     setCustomAmount(null);
     setSelectedMonths([]);
   };
-
-  // Calculation helpers
-  const selectedCount = selectedMonths.length;
-  const baseInstallmentAmount = selectedCount * MONTHLY_INSTALLMENT_AMOUNT;
-
-  // Determine if any selected month is overdue
-  const hasSelectedDueMonths = useMemo(() => {
-    return selectedMonths.some((m) => currentShare?.months[m]?.status === 'due');
-  }, [selectedMonths, currentShare]);
-
-  const currentDayOfMonth = new Date().getDate();
-
-  // Dynamically calculate compound due for the exact selected months count
-  const dynamicCompound = useMemo(() => {
-    if (!hasSelectedDueMonths || selectedCount === 0) {
-      return {
-        totalDue: baseInstallmentAmount,
-        penaltyDue: 0,
-        principalDue: baseInstallmentAmount,
-      };
-    }
-    return calculateCompoundDue(selectedCount, currentDayOfMonth, selectedMonths);
-  }, [hasSelectedDueMonths, selectedCount, currentDayOfMonth, selectedMonths, baseInstallmentAmount]);
-
-  const activeLateFee = (hasSelectedDueMonths && includeLateFee) ? dynamicCompound.penaltyDue : 0;
-  const autoCalculatedTotal = hasSelectedDueMonths
-    ? (includeLateFee ? dynamicCompound.totalDue : baseInstallmentAmount)
-    : baseInstallmentAmount;
-  const displayAmount = customAmount !== null ? customAmount : autoCalculatedTotal;
 
   if (!isOpen) return null;
 
@@ -310,13 +343,17 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
               </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            aria-label="Close dialog"
-            className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          <div className="w-auto">
+            <TextureButton
+              variant="icon"
+              size="icon"
+              onClick={onClose}
+              aria-label="Close dialog"
+              className="w-8 h-8"
+            >
+              <X className="w-4 h-4 text-slate-400 group-hover:text-white" />
+            </TextureButton>
+          </div>
         </div>
 
         {/* Form Body */}
@@ -421,8 +458,11 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
             <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto p-1 border border-slate-200 rounded-xl bg-slate-50/40">
               {displayMonthsList.map((m) => {
                 const monthData = currentShare?.months[m];
-                const isDue = monthData?.status === 'due';
-                const isCurrent = m === 'Oct-26';
+                const isPaid = monthData?.status === 'paid';
+                const isPast = isMonthPast(m, currentMonthKey);
+                const isCurrentPastDeadline = m === currentMonthKey && new Date().getDate() > 15;
+                const isDue = !isPaid && (monthData?.status === 'due' || isPast || isCurrentPastDeadline);
+                const isCurrent = m === currentMonthKey;
                 const isChecked = selectedMonths.includes(m);
 
                 return (
@@ -463,11 +503,11 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
                           {t('statusDue')}
                         </span>
                       ) : isCurrent ? (
-                        <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-100 text-amber-900">
+                        <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
                           {t('current')}
                         </span>
                       ) : (
-                        <span className="px-1.5 py-0.2 rounded text-[10px] font-medium bg-emerald-50 text-emerald-800 border border-emerald-200/60">
+                        <span className="px-1.5 py-0.2 rounded text-[10px] font-medium bg-blue-50 text-blue-700 border border-blue-200/60">
                           {t('advance')}
                         </span>
                       )}
@@ -532,12 +572,6 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
                 className="w-full px-3 py-2 border border-slate-300 rounded-xl text-slate-900 font-mono font-bold text-base focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 shadow-2xs"
                 required
               />
-              <span className="text-[10px] text-slate-400 mt-1 block">
-                {selectedCount} month(s) &bull; Tk. 2,800
-                {hasSelectedDueMonths && includeLateFee && dynamicCompound.penaltyDue > 0
-                  ? ` + ${formatTaka(dynamicCompound.penaltyDue)} fine`
-                  : ''}
-              </span>
             </div>
 
             <div>
@@ -574,9 +608,6 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
                 className="w-full px-3 py-2 border border-slate-300 rounded-xl text-slate-900 font-mono text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 shadow-2xs bg-white cursor-pointer"
                 required
               />
-              <span className="text-[10px] text-slate-400 mt-1 block font-mono">
-                {language === 'bn' ? 'রেকর্ড হবে' : 'Saved as'}: {formatIsoToLedgerDate(date)}
-              </span>
             </div>
 
             <div>
@@ -611,29 +642,32 @@ export const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({
           </div>
 
           {/* Ultra-Premium Action Footer */}
-          <div className="pt-3 border-t border-slate-200/80 flex items-center justify-between">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 rounded-xl border border-slate-300 hover:bg-slate-100 text-slate-700 text-xs font-semibold transition-colors duration-150 cursor-pointer"
-            >
-              {t('cancel')}
-            </button>
+          <div className="pt-3 border-t border-slate-200/80 flex items-center justify-between gap-3">
+            <div className="w-auto">
+              <TextureButton
+                variant="secondary"
+                size="sm"
+                onClick={onClose}
+                className="w-auto"
+              >
+                {t('cancel')}
+              </TextureButton>
+            </div>
 
-            <button
-              type="submit"
-              disabled={selectedMonths.length === 0}
-              className={`px-5 py-2.5 rounded-xl text-white text-xs sm:text-sm font-bold shadow-md transition-colors duration-150 inline-flex items-center gap-2 cursor-pointer disabled:bg-slate-300 disabled:cursor-not-allowed disabled:text-slate-500 disabled:shadow-none ${
-                selectedMonths.length === 0
-                  ? 'bg-slate-300 cursor-not-allowed text-slate-500 shadow-none'
-                  : 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-600/20 active:scale-98'
-              }`}
-            >
-              <Check className="w-4 h-4 stroke-[2.5]" />
-              <span>
-                {t('confirmPayment')} &bull; {formatTaka(displayAmount)}
-              </span>
-            </button>
+            <div className="w-auto">
+              <TextureButton
+                variant="emerald"
+                size="default"
+                type="submit"
+                disabled={selectedMonths.length === 0}
+                className="w-auto min-w-[200px]"
+              >
+                <Check className="w-4 h-4 stroke-[2.5]" />
+                <span>
+                  {t('confirmPayment')} &bull; {formatTaka(displayAmount)}
+                </span>
+              </TextureButton>
+            </div>
           </div>
         </form>
       </div>

@@ -139,11 +139,11 @@ export const GoogleSheetSyncModal: React.FC<GoogleSheetSyncModalProps> = ({
       onClick={(e) => {
         if (e.target === e.currentTarget && !confirmAction) onClose();
       }}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 overflow-y-auto"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/75"
     >
-      <div className="relative w-full max-w-xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-8">
+      <div className="relative w-full max-w-xl max-h-[92vh] flex flex-col bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+        <div className="shrink-0 px-6 py-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-xs">
               <FileSpreadsheet className="w-5 h-5" />
@@ -167,7 +167,7 @@ export const GoogleSheetSyncModal: React.FC<GoogleSheetSyncModalProps> = ({
         </div>
 
         {/* Content Body */}
-        <div className="p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {errorMsg && (
             <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-2.5 text-xs text-rose-800">
               <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
@@ -474,7 +474,7 @@ export const GoogleSheetSyncModal: React.FC<GoogleSheetSyncModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+        <div className="shrink-0 px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
           <span className="flex items-center gap-1">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
             <span>Encrypted OAuth2 Workspace Connection</span>

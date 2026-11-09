@@ -89,10 +89,10 @@ export const MonthSettingsModal: React.FC<MonthSettingsModalProps> = ({
       }}
       className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/75 motion-safe:animate-in motion-safe:fade-in duration-150"
     >
-      <div className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-95 duration-150">
+      <div className="relative w-full max-w-lg max-h-[92vh] flex flex-col bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-95 duration-150">
         
         {/* Header */}
-        <div className="px-5 py-3.5 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800">
+        <div className="shrink-0 px-5 py-3.5 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center">
               <Settings className="w-4 h-4" />
@@ -112,7 +112,7 @@ export const MonthSettingsModal: React.FC<MonthSettingsModalProps> = ({
         </div>
 
         {/* Modal Body */}
-        <div className="p-5 space-y-4">
+        <div className="flex-1 overflow-y-auto p-5 space-y-4">
           
           {/* Quick Display Mode Presets */}
           <div className="grid grid-cols-2 gap-2">
@@ -244,7 +244,7 @@ export const MonthSettingsModal: React.FC<MonthSettingsModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+        <div className="shrink-0 px-5 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
           <span className="text-xs text-slate-500">
             {activeMonths.length} month(s) visible on ledger
           </span>
