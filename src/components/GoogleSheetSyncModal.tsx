@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { User as FirebaseUser } from 'firebase/auth';
 import { SheetMetadata, extractSpreadsheetId } from '../services/googleSheets';
+import { useLanguage } from '../context/LanguageContext';
 import {
   X,
   FileSpreadsheet,
@@ -14,6 +15,8 @@ import {
   Plus,
   Link,
   ShieldCheck,
+  ClipboardPaste,
+  Info,
 } from 'lucide-react';
 
 interface GoogleSheetSyncModalProps {
@@ -51,15 +54,36 @@ export const GoogleSheetSyncModal: React.FC<GoogleSheetSyncModalProps> = ({
   onToggleAutoSync,
   onDisconnectSheet,
 }) => {
+  const { language } = useLanguage();
+  const isBn = language === 'bn';
+
   const [sheetInput, setSheetInput] = useState<string>('');
   const [isLinking, setIsLinking] = useState<boolean>(false);
   const [isCreating, setIsCreating] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Destructive confirmation state
   const [confirmAction, setConfirmAction] = useState<'pull' | 'push' | null>(null);
 
   if (!isOpen) return null;
+
+  const handlePasteFromClipboard = async () => {
+    try {
+      if (navigator.clipboard && navigator.clipboard.readText) {
+        const text = await navigator.clipboard.readText();
+        if (text) {
+          setSheetInput(text.trim());
+          setErrorMsg(null);
+          return;
+        }
+      }
+    } catch {
+      // If permission is denied or blocked, focus input so user can press Ctrl+V
+    }
+    inputRef.current?.focus();
+    inputRef.current?.select();
+  };
 
   const handleLinkSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,6 +91,9 @@ export const GoogleSheetSyncModal: React.FC<GoogleSheetSyncModalProps> = ({
     setErrorMsg(null);
     setIsLinking(true);
     try {
+      if (!currentUser) {
+        await onSignIn();
+      }
       await onLinkExistingSheet(sheetInput.trim());
       setSheetInput('');
     } catch (err: any) {
@@ -80,6 +107,9 @@ export const GoogleSheetSyncModal: React.FC<GoogleSheetSyncModalProps> = ({
     setErrorMsg(null);
     setIsCreating(true);
     try {
+      if (!currentUser) {
+        await onSignIn();
+      }
       await onCreateNewSheet();
     } catch (err: any) {
       setErrorMsg(err?.message || 'Failed to create Google Sheet.');
@@ -355,56 +385,88 @@ export const GoogleSheetSyncModal: React.FC<GoogleSheetSyncModalProps> = ({
 
               {/* Option A: Create New Sheet */}
               <div className="p-4 bg-white border border-slate-200 rounded-xl shadow-xs space-y-2">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-3">
                   <div>
                     <h4 className="font-bold text-slate-900 text-xs sm:text-sm flex items-center gap-1.5">
                       <Plus className="w-4 h-4 text-emerald-600" />
-                      <span>Create New Google Sheet</span>
+                      <span>{isBn ? 'নতুন গুগল শিট তৈরি করুন' : 'Create New Google Sheet'}</span>
                     </h4>
                     <p className="text-[11px] text-slate-500 mt-0.5">
-                      Instantly generates a formatted 2026-27 Progressive Association Society Register in your Drive.
+                      {isBn
+                        ? 'আপনার গুগল ড্রাইভে স্বয়ংক্রিয়ভাবে একটি নতুন প্রগ্রেসিভ রেজিস্টার শিট তৈরি করবে।'
+                        : 'Instantly generates a formatted 2026-27 Progressive Association Society Register in your Drive.'}
                     </p>
                   </div>
                   <button
                     onClick={handleCreateNew}
-                    disabled={!currentUser || isCreating}
+                    disabled={isCreating}
                     className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-xs transition-colors cursor-pointer disabled:opacity-50 shrink-0"
                   >
-                    {isCreating ? 'Creating...' : 'Create & Link'}
+                    {isCreating
+                      ? (isBn ? 'তৈরি হচ্ছে...' : 'Creating...')
+                      : (isBn ? 'তৈরি ও লিংক' : 'Create & Link')}
                   </button>
                 </div>
                 {!currentUser && (
                   <p className="text-[10px] text-amber-700 italic">
-                    * Please sign in with Google first to create a spreadsheet.
+                    *{isBn ? 'ক্লিক করলে গুগল অ্যাকাউন্ট সাইন-ইন প্রম্পট আসবে।' : 'Google account sign-in prompt will appear upon clicking.'}
                   </p>
                 )}
               </div>
 
               {/* Option B: Link Existing Sheet */}
-              <div className="p-4 bg-white border border-slate-200 rounded-xl shadow-xs">
+              <div className="p-4 bg-white border border-slate-200 rounded-xl shadow-xs space-y-2">
                 <h4 className="font-bold text-slate-900 text-xs sm:text-sm flex items-center gap-1.5 mb-1">
                   <Link className="w-4 h-4 text-blue-600" />
-                  <span>Link Existing Google Sheet</span>
+                  <span>{isBn ? 'বিদ্যমান গুগল শিট লিংক করুন' : 'Link Existing Google Sheet'}</span>
                 </h4>
                 <p className="text-[11px] text-slate-500 mb-3">
-                  Paste the URL or Spreadsheet ID of your existing Google Sheet.
+                  {isBn
+                    ? 'আপনার বিদ্যমান গুগল শিটের লিংক বা স্প্রেডশিট আইডি নিচে পেস্ট করুন:'
+                    : 'Paste the URL or Spreadsheet ID of your existing Google Sheet.'}
                 </p>
-                <form onSubmit={handleLinkSubmit} className="flex gap-2">
-                  <input
-                    type="text"
-                    value={sheetInput}
-                    onChange={(e) => setSheetInput(e.target.value)}
-                    placeholder="https://docs.google.com/spreadsheets/d/1BxiMVs0X..."
-                    className="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-xs font-mono focus:outline-emerald-500"
-                    disabled={!currentUser}
-                  />
-                  <button
-                    type="submit"
-                    disabled={!currentUser || isLinking || !sheetInput.trim()}
-                    className="px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition-colors cursor-pointer disabled:opacity-50"
-                  >
-                    {isLinking ? 'Connecting...' : 'Connect'}
-                  </button>
+                <form onSubmit={handleLinkSubmit} className="space-y-2">
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <input
+                        ref={inputRef}
+                        type="text"
+                        value={sheetInput}
+                        onChange={(e) => setSheetInput(e.target.value)}
+                        placeholder="https://docs.google.com/spreadsheets/d/1BxiMVs0X..."
+                        className="w-full px-3 py-2 pr-20 border border-slate-300 rounded-lg text-xs font-mono focus:outline-emerald-500 bg-white text-slate-900"
+                      />
+                      <button
+                        type="button"
+                        onClick={handlePasteFromClipboard}
+                        className="absolute right-1.5 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-semibold flex items-center gap-1 border border-slate-200 cursor-pointer transition-colors"
+                        title={isBn ? 'ক্লিপবোর্ড থেকে পেস্ট করুন' : 'Paste link from clipboard'}
+                      >
+                        <ClipboardPaste className="w-3.5 h-3.5 text-blue-600" />
+                        <span>{isBn ? 'পেস্ট' : 'Paste'}</span>
+                      </button>
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={isLinking || !sheetInput.trim()}
+                      className="px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition-colors cursor-pointer disabled:opacity-50 shrink-0"
+                    >
+                      {isLinking
+                        ? (isBn ? 'সংযোগ হচ্ছে...' : 'Connecting...')
+                        : (isBn ? 'কানেক্ট করুন' : 'Connect')}
+                    </button>
+                  </div>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between text-[11px] text-slate-500 gap-1">
+                    <span className="flex items-center gap-1">
+                      <Info className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                      <span>{isBn ? 'গুগল শিট থেকে লিংক কপি করে এখানে পেস্ট বা পেস্ট বাটনে চাপুন।' : 'Copy link from your Google Sheet browser tab and paste here.'}</span>
+                    </span>
+                    {!currentUser && (
+                      <span className="text-amber-700 font-medium">
+                        *{isBn ? 'কানেক্টে চাপলে গুগল লগইন করতে হবে' : 'Google sign-in required on Connect'}
+                      </span>
+                    )}
+                  </div>
                 </form>
               </div>
             </div>
